@@ -57,21 +57,6 @@
 #define SEP "/"
 #endif
 
-#ifdef AMIGA
-#undef toupper
-#define toupper(x) ToUpper(x)
-#undef tolower
-#define tolower(x) ToLower(x)
-#undef isalpha
-#define isalpha(x) IsAlpha(_AmigaLocale,x)
-#undef isalnum
-#define isalnum(x) IsAlNum(_AmigaLocale,x)
-#undef isdigit
-#define isdigit(x) IsDigit(_AmigaLocale,x)
-#undef isspace
-#define isspace(x) IsSpace(_AmigaLocale,x)
-#endif
-
 #undef FALSE
 #undef TRUE
 typedef enum { FALSE, TRUE } bool;
@@ -164,10 +149,6 @@ static COMMAND command[] = {
      { { 5, "STATS-ALL" },"Display stats for the whole lifetime",STATS-ALL},
      */
 };
-
-#ifdef AMIGA
-struct Locale *_AmigaLocale;
-#endif
 
 /* FIXME - these need to be static  */
 
@@ -300,10 +281,6 @@ void megahal_initialize(void)
     initialize_error(errorfilename);
     initialize_status(statusfilename);
     ignore(0);
-    
-#ifdef AMIGA
-    _AmigaLocale=OpenLocale(NULL);
-#endif
     
     if(!nobanner)
         fprintf(stdout,
@@ -481,11 +458,7 @@ int megahal_command(char *input)
 
 void megahal_cleanup(void)
 {
-    save_model("megahal.brn", model);
-    
-#ifdef AMIGA
-    CloseLocale(_AmigaLocale);
-#endif
+    save_model("megahal.brn", model);    
 }
 
 
