@@ -1898,7 +1898,9 @@ char *generate_reply(MODEL *model, DICTIONARY *words)
     count=0;
     basetime=time(NULL);
     /*     progress("Generating reply", 0, 1);  */
-    do {
+    
+    //do {
+    for (int i = 0; i < 10; i++) {
         replywords=reply(model, keywords);
         surprise=evaluate_reply(model, keywords, replywords);
         ++count;
@@ -1906,8 +1908,10 @@ char *generate_reply(MODEL *model, DICTIONARY *words)
             max_surprise=surprise;
             output=make_output(replywords);
         }
+    }
         /*      progress(NULL, (time(NULL)-basetime),timeout); */
-    } while((time(NULL)-basetime)<timeout);
+    //} while((time(NULL)-basetime)<timeout);
+    
     progress(NULL, 1, 1);
     
     /*
@@ -2640,10 +2644,12 @@ int rnd(int range)
     static bool flag=false;
     
     if(flag==false) {
-        srand48(time(NULL));
+        //srand48(time(NULL));
+        srand48(0);
     }
     flag=true;
-    return(floor(drand48()*(double)(range)));
+    int x = (floor(drand48()*(double)(range)));
+    return x;
 }
 
 

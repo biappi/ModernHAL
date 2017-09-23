@@ -34,6 +34,17 @@ class ModernHALTests: XCTestCase {
             "one test two test three test",
         ]
         
+        let sampleAnswers = [
+            "I don\'t know enough to answer you yet!",
+            "Test one test two test three test.",
+            "One test two test three.",
+            "Test two test three.",
+            "One test two test three.",
+            "Test three test one.",
+            "Three test one.",
+            "One test two test."
+        ]
+        
         megahal_initialize()
         
         let answers = smokeTestInput.map {
@@ -42,7 +53,7 @@ class ModernHALTests: XCTestCase {
             }
         }
         
-        _ = answers
+        XCTAssert(answers == sampleAnswers)
     }
     
     func testPerformanceExample() {
