@@ -13,6 +13,7 @@
 		3F9DB6451F76A40F001DAECD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3F9DB6431F76A40F001DAECD /* Main.storyboard */; };
 		3F9DB6511F76A40F001DAECD /* ModernHALTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9DB6501F76A40F001DAECD /* ModernHALTests.swift */; };
 		3FBD000D1F76D2BB00EC5E80 /* SwiftCheck.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3FBD00021F76D2A200EC5E80 /* SwiftCheck.framework */; };
+		3FBD000F1F76E90700EC5E80 /* ModernHAL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FBD000E1F76E90700EC5E80 /* ModernHAL.swift */; };
 		3FBDFFF61F76A56500EC5E80 /* megahal.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FBDFFF51F76A56500EC5E80 /* megahal.c */; };
 /* End PBXBuildFile section */
 
@@ -79,6 +80,7 @@
 		3F9DB64C1F76A40F001DAECD /* ModernHALTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ModernHALTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3F9DB6501F76A40F001DAECD /* ModernHALTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernHALTests.swift; sourceTree = "<group>"; };
 		3F9DB6521F76A40F001DAECD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		3FBD000E1F76E90700EC5E80 /* ModernHAL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ModernHAL.swift; path = ModernHAL/ModernHAL.swift; sourceTree = "<group>"; };
 		3FBDFFF41F76A56500EC5E80 /* ModernHAL-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ModernHAL-Bridging-Header.h"; path = "ModernHAL/ModernHAL-Bridging-Header.h"; sourceTree = "<group>"; };
 		3FBDFFF51F76A56500EC5E80 /* megahal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = megahal.c; path = ModernHAL/megahal.c; sourceTree = "<group>"; };
 		3FBDFFF71F76A5CE00EC5E80 /* megahal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = megahal.h; path = ModernHAL/megahal.h; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 				3FBDFFF41F76A56500EC5E80 /* ModernHAL-Bridging-Header.h */,
 				3FBDFFF71F76A5CE00EC5E80 /* megahal.h */,
 				3FBDFFF51F76A56500EC5E80 /* megahal.c */,
+				3FBD000E1F76E90700EC5E80 /* ModernHAL.swift */,
 				3F9DB64F1F76A40F001DAECD /* ModernHALTests */,
 				3F9DB63B1F76A40F001DAECD /* Products */,
 			);
@@ -321,6 +324,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3FBD000F1F76E90700EC5E80 /* ModernHAL.swift in Sources */,
 				3FBDFFF61F76A56500EC5E80 /* megahal.c in Sources */,
 				3F9DB6401F76A40F001DAECD /* ViewController.swift in Sources */,
 				3F9DB63E1F76A40F001DAECD /* AppDelegate.swift in Sources */,

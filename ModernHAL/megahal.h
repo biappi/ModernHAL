@@ -199,5 +199,7 @@ int wordcmp(STRING, STRING);
 bool word_exists(DICTIONARY *, STRING);
 int rnd(int);
 
+extern DICTIONARY *words;
+extern MODEL *model;
 
 #endif /* MEGAHAL_H  */

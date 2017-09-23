@@ -118,6 +118,26 @@ class ModernHALTests: XCTestCase {
                     return first == second
                 }
             }
+        
+        property("do_reply") <-
+            forAllNoShrink(words) { (string: String) in
+                
+                return string.withCString {
+                    megahal_initialize()
+                    
+                    let s      = UnsafeMutablePointer(mutating: $0)
+                    srand48(0)
+                    let first  = String(cString: megahal_do_reply(s, 0))
+                    srand48(0)
+                    let second = modernhal_do_reply(input: string)
+                    
+                    print(first)
+                    print(second)
+                    
+                    return first == second
+                }
+            }
+        
     }
     
     func testPerformanceExample() {
