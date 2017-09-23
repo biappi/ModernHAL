@@ -21,18 +21,46 @@ let letters = Gen<Character>.one(of: [
     upperCaseCharacters,
     numericCharacters,
     specialCharacters
-    ])
+])
 
 let strings = letters
     .proliferateNonEmpty
     .suchThat { $0.count > 1 }
     .map { String.init($0) }
 
+let words = Gen<String>.fromElements(of: [
+    "test",
+    "one",
+    "two",
+    "three"
+])
+    .proliferate
+    .flatMap { Gen<String>.pure($0.joined(separator: " ")) }
+
+let smokeTestInput = [
+    "test one test two test three",
+    "one test two test three test",
+    "test two test three test one",
+    "two test three test one test",
+    "test three test one test two",
+    "three test one test two test",
+    "test one test two test three",
+    "one test two test three test",
+]
+
 class ModernHALTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        
+        megahal_initialize()
+        
+        srand48(0)
+        smokeTestInput.forEach {
+            $0.withCString {
+                _ = megahal_do_reply(UnsafeMutablePointer(mutating: $0), 0)
+            }
+        }
     }
     
     override func tearDown() {
@@ -42,30 +70,18 @@ class ModernHALTests: XCTestCase {
     
     /// Smoke test trying to avoid c memory crashers
     func test_smoke() {
-        let smokeTestInput = [
-            "test one test two test three",
-            "one test two test three test",
-            "test two test three test one",
-            "two test three test one test",
-            "test three test one test two",
-            "three test one test two test",
-            "test one test two test three",
-            "one test two test three test",
-        ]
-        
         let sampleAnswers = [
-            "I don\'t know enough to answer you yet!",
-            "Test one test two test three test.",
-            "One test two test three.",
-            "Test two test three.",
-            "One test two test three.",
-            "Test three test one.",
+            "One test two test three test.",
+            "Test one test two.",
+            "One test two test three test.",
             "Three test one.",
-            "One test two test."
+            "Two test three test one.",
+            "One test two.",
+            "Three test one test two test.",
+            "Two test three."
         ]
         
-        megahal_initialize()
-        
+        srand48(0)
         let answers = smokeTestInput.map {
             $0.withCString {
                 String(cString: megahal_do_reply(UnsafeMutablePointer(mutating: $0), 0))
@@ -85,6 +101,22 @@ class ModernHALTests: XCTestCase {
                 let uppercased = String(bytes: stringData, encoding: .utf8)!
                 
                 return uppercased == s.uppercased()
+            }
+        
+        property("tests are deterministic") <-
+            forAllNoShrink(words) { (string: String) in
+                
+                return string.withCString {
+                    megahal_initialize()
+                    
+                    let s      = UnsafeMutablePointer(mutating: $0)
+                    srand48(0)
+                    let first  = String(cString: megahal_do_reply(s, 0))
+                    srand48(0)
+                    let second = String(cString: megahal_do_reply(s, 0))
+                    
+                    return first == second
+                }
             }
     }
     
