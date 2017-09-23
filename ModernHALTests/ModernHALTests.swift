@@ -7,7 +7,26 @@
 //
 
 import XCTest
+import SwiftCheck
+
 @testable import ModernHAL
+
+let lowerCaseCharacters : Gen<Character> = Gen<Character>.fromElements(in: "a"..."z")
+let upperCaseCharacters : Gen<Character> = Gen<Character>.fromElements(in: "A"..."Z")
+let numericCharacters   : Gen<Character> = Gen<Character>.fromElements(in: "0"..."9")
+let specialCharacters   : Gen<Character> = Gen<Character>.fromElements(of: ["!", "#", "$", "%", "&", "'", "*", "+", "-", "/", "=", "?", "^", "_", "`", "{", "|", "}", "~", "."])
+
+let letters = Gen<Character>.one(of: [
+    lowerCaseCharacters,
+    upperCaseCharacters,
+    numericCharacters,
+    specialCharacters
+    ])
+
+let strings = letters
+    .proliferateNonEmpty
+    .suchThat { $0.count > 1 }
+    .map { String.init($0) }
 
 class ModernHALTests: XCTestCase {
     
@@ -54,6 +73,19 @@ class ModernHALTests: XCTestCase {
         }
         
         XCTAssert(answers == sampleAnswers)
+    }
+    
+    func test_quickchecks() {
+        property("upper") <-
+            forAll(strings) { (s: String) in
+                
+                var stringData = s.data(using: .utf8)!
+                stringData.withUnsafeMutableBytes { upper($0) }
+                
+                let uppercased = String(bytes: stringData, encoding: .utf8)!
+                
+                return uppercased == s.uppercased()
+            }
     }
     
     func testPerformanceExample() {
