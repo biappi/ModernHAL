@@ -53,11 +53,6 @@
 
 /*===========================================================================*/
 
-#ifdef SUNOS
-extern double drand48(void);
-extern void srand48(long);
-#endif
-
 /* public functions  */
 
 void megahal_setnoprompt (void);
