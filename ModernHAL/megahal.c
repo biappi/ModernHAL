@@ -51,11 +51,7 @@
 #define BYTE2 unsigned short
 #define BYTE4 unsigned long
 
-#ifdef DOS
-#define SEP "\\"
-#else
 #define SEP "/"
-#endif
 
 #undef FALSE
 #undef TRUE
@@ -2742,11 +2738,9 @@ void ignore(int sig)
 {
     //if(sig!=0) warn("ignore", "MegaHAL received signal %d", sig);
     
-#if !defined(DOS)
     //    signal(SIGINT, saveandexit);
     //    signal(SIGILL, die);
     //    signal(SIGSEGV, die);
-#endif
     //    signal(SIGFPE, die);
 }
 
