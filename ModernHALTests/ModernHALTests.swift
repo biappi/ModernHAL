@@ -21,9 +21,28 @@ class ModernHALTests: XCTestCase {
         super.tearDown()
     }
     
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+    /// Smoke test trying to avoid c memory crashers
+    func test_smoke() {
+        let smokeTestInput = [
+            "test one test two test three",
+            "one test two test three test",
+            "test two test three test one",
+            "two test three test one test",
+            "test three test one test two",
+            "three test one test two test",
+            "test one test two test three",
+            "one test two test three test",
+        ]
+        
+        megahal_initialize()
+        
+        let answers = smokeTestInput.map {
+            $0.withCString {
+                String(cString: megahal_do_reply(UnsafeMutablePointer(mutating: $0), 0))
+            }
+        }
+        
+        _ = answers
     }
     
     func testPerformanceExample() {
