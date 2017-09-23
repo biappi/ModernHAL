@@ -271,7 +271,6 @@ static void train(MODEL *, char *);
 static void typein(char);
 static void update_context(MODEL *, int);
 static void update_model(MODEL *, int);
-static bool warn(char *, char *, ...);
 static int wordcmp(STRING, STRING);
 static bool word_exists(DICTIONARY *, STRING);
 static int rnd(int);
@@ -722,24 +721,6 @@ void error(char *title, char *fmt, ...)
     fprintf(stderr, "MegaHAL died for some reason; check the error log.\n");
 
     exit(1);
-}
-
-/*---------------------------------------------------------------------------*/
-
-bool warn(char *title, char *fmt, ...)
-{
-    va_list argp;
-
-    fprintf(errorfp, "%s: ", title);
-    va_start(argp, fmt);
-    vfprintf(errorfp, fmt, argp);
-    va_end(argp);
-    fprintf(errorfp, ".\n");
-    fflush(errorfp);
-
-    fprintf(stderr, "MegaHAL emitted a warning; check the error log.\n");
-
-    return(TRUE);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1771,7 +1752,7 @@ void show_dictionary(DICTIONARY *dictionary)
 
     file=fopen("megahal.dic", "w");
     if(file==NULL) {
-	warn("show_dictionary", "Unable to open file");
+	//warn("show_dictionary", "Unable to open file");
 	return;
     }
 
@@ -1811,7 +1792,7 @@ void save_model(char *modelname, MODEL *model)
     sprintf(filename, "%s%smegahal.brn", directory, SEP);
     file=fopen(filename, "wb");
     if(file==NULL) {
-	warn("save_model", "Unable to open file `%s'", filename);
+    //warn("save_model", "Unable to open file `%s'", filename);
 	return;
     }
 
@@ -1905,14 +1886,14 @@ bool load_model(char *filename, MODEL *model)
     file=fopen(filename, "rb");
 
     if(file==NULL) {
-	warn("load_model", "Unable to open file `%s'", filename);
+	//warn("load_model", "Unable to open file `%s'", filename);
 	return(FALSE);
     }
 
 
     fread(cookie, sizeof(char), strlen(COOKIE), file);
     if(strncmp(cookie, COOKIE, strlen(COOKIE))!=0) {
-	warn("load_model", "File `%s' is not a MegaHAL brain", filename);
+	//warn("load_model", "File `%s' is not a MegaHAL brain", filename);
 	goto fail;
     }
 
@@ -2830,7 +2811,7 @@ void typein(char c)
  */
 void ignore(int sig)
 {
-    if(sig!=0) warn("ignore", "MegaHAL received signal %d", sig);
+    //if(sig!=0) warn("ignore", "MegaHAL received signal %d", sig);
 
 #if !defined(DOS)
     //    signal(SIGINT, saveandexit);
