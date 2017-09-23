@@ -201,5 +201,6 @@ int rnd(int);
 
 extern DICTIONARY *words;
 extern MODEL *model;
+extern bool used_key;
 
 #endif /* MEGAHAL_H  */

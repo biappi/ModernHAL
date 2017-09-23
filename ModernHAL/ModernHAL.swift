@@ -78,7 +78,7 @@ func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
     var maxSurprise : Float = -10.0
     
     for _ in 0 ..< 10 {
-        replywords = reply(model, keywords)
+        replywords = modernhal_reply(model: model, keys: keywords!)
         let surprise = evaluate_reply(model, keywords, replywords)
         
         count += 1
@@ -92,4 +92,100 @@ func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
     }
     
     return output
+}
+
+let replies = new_dictionary()!
+func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
+                     keys:  UnsafeMutablePointer<DICTIONARY>)
+    -> UnsafeMutablePointer<DICTIONARY>
+{
+    free_dictionary(replies)
+    
+    initialize_context(model)
+    model.pointee.context.advanced(by: 0).pointee = model.pointee.forward
+    
+    used_key = false
+    
+    var start = true
+    var symbol : Int32 = 0
+    
+    while true {
+        if start {
+            symbol = seed(model, keys)
+        }
+        else {
+            symbol = babble(model, keys, replies)
+        }
+        
+        if symbol == 0 || symbol == 1 {
+            break
+        }
+        
+        start = false
+        
+        if replies.pointee.entry == nil {
+            replies.pointee.entry = UnsafeMutablePointer<STRING>.allocate(capacity: Int(replies.pointee.size) + 1)
+        }
+        else {
+            let p = realloc(replies.pointee.entry, Int(replies.pointee.size + 1) * MemoryLayout<STRING>.stride)
+            replies.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
+        }
+        
+        replies.pointee.entry.advanced(by: Int(replies.pointee.size)).pointee.length
+            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.length
+        replies.pointee.entry.advanced(by: Int(replies.pointee.size)).pointee.word
+            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.word
+        
+        replies.pointee.size += 1
+        
+        update_context(model, symbol)
+    }
+    
+    initialize_context(model)
+    model.pointee.context.advanced(by: 0).pointee = model.pointee.backward
+    
+    if replies.pointee.size > 0 {
+        let size = min(Int(replies.pointee.size), Int(model.pointee.order))
+        for i in (0 ..< size).reversed() {
+            let symbol = find_word(model.pointee.dictionary,
+                                   replies.pointee.entry.advanced(by: i).pointee)
+            update_context(model, Int32(symbol))
+        }
+    }
+    
+    while true {
+        symbol = babble(model, keys, replies)
+        
+        if symbol == 0 || symbol == 1 {
+            break
+        }
+        
+        if replies.pointee.entry == nil {
+            replies.pointee.entry = UnsafeMutablePointer<STRING>.allocate(capacity: Int(replies.pointee.size) + 1)
+        }
+        else {
+            let p = realloc(replies.pointee.entry, Int(replies.pointee.size + 1) * MemoryLayout<STRING>.stride)
+            replies.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
+        }
+        
+        for i in (1 ..< replies.pointee.size + 1).reversed() {
+            replies.pointee.entry.advanced(by: Int(i)).pointee.length
+                = replies.pointee.entry.advanced(by: Int(i - 1)).pointee.length
+            
+            replies.pointee.entry.advanced(by: Int(i)).pointee.word
+                = replies.pointee.entry.advanced(by: Int(i - 1)).pointee.word
+        }
+        
+        replies.pointee.entry.advanced(by: 0).pointee.length
+            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.length
+        
+        replies.pointee.entry.advanced(by: 0).pointee.word
+            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.word
+        
+        replies.pointee.size += 1
+        
+        update_context(model, symbol)
+    }
+    
+    return replies
 }
