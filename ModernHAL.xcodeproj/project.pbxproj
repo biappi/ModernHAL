@@ -12,6 +12,7 @@
 		3F9DB6421F76A40F001DAECD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3F9DB6411F76A40F001DAECD /* Assets.xcassets */; };
 		3F9DB6451F76A40F001DAECD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3F9DB6431F76A40F001DAECD /* Main.storyboard */; };
 		3F9DB6511F76A40F001DAECD /* ModernHALTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9DB6501F76A40F001DAECD /* ModernHALTests.swift */; };
+		3FBD000D1F76D2BB00EC5E80 /* SwiftCheck.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3FBD00021F76D2A200EC5E80 /* SwiftCheck.framework */; };
 		3FBDFFF61F76A56500EC5E80 /* megahal.c in Sources */ = {isa = PBXBuildFile; fileRef = 3FBDFFF51F76A56500EC5E80 /* megahal.c */; };
 /* End PBXBuildFile section */
 
@@ -22,6 +23,48 @@
 			proxyType = 1;
 			remoteGlobalIDString = 3F9DB6391F76A40F001DAECD;
 			remoteInfo = ModernHAL;
+		};
+		3FBD00011F76D2A200EC5E80 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 844FCC8D198B320500EB242A;
+			remoteInfo = SwiftCheck;
+		};
+		3FBD00031F76D2A200EC5E80 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 844FCC98198B320500EB242A;
+			remoteInfo = SwiftCheckTests;
+		};
+		3FBD00051F76D2A200EC5E80 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 84DF75F81B0BD54600C912B0;
+			remoteInfo = "SwiftCheck-iOS";
+		};
+		3FBD00071F76D2A200EC5E80 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 84DF76021B0BD54600C912B0;
+			remoteInfo = "SwiftCheck-iOSTests";
+		};
+		3FBD00091F76D2A200EC5E80 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8240CCB11C3A123600EF4D29;
+			remoteInfo = "SwiftCheck-tvOS";
+		};
+		3FBD000B1F76D2A200EC5E80 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8240CCBA1C3A123700EF4D29;
+			remoteInfo = "SwiftCheck-tvOSTests";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -39,6 +82,7 @@
 		3FBDFFF41F76A56500EC5E80 /* ModernHAL-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ModernHAL-Bridging-Header.h"; path = "ModernHAL/ModernHAL-Bridging-Header.h"; sourceTree = "<group>"; };
 		3FBDFFF51F76A56500EC5E80 /* megahal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = megahal.c; path = ModernHAL/megahal.c; sourceTree = "<group>"; };
 		3FBDFFF71F76A5CE00EC5E80 /* megahal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = megahal.h; path = ModernHAL/megahal.h; sourceTree = "<group>"; };
+		3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = SwiftCheck.xcodeproj; path = SwiftCheck/SwiftCheck.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +97,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3FBD000D1F76D2BB00EC5E80 /* SwiftCheck.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -62,6 +107,7 @@
 		3F9DB6311F76A40F001DAECD = {
 			isa = PBXGroup;
 			children = (
+				3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */,
 				3F9DB63C1F76A40F001DAECD /* ModernHAL */,
 				3FBDFFF41F76A56500EC5E80 /* ModernHAL-Bridging-Header.h */,
 				3FBDFFF71F76A5CE00EC5E80 /* megahal.h */,
@@ -108,6 +154,19 @@
 				3F9DB6471F76A40F001DAECD /* ModernHAL.entitlements */,
 			);
 			path = Boilerplate;
+			sourceTree = "<group>";
+		};
+		3FBDFFF91F76D2A200EC5E80 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3FBD00021F76D2A200EC5E80 /* SwiftCheck.framework */,
+				3FBD00041F76D2A200EC5E80 /* SwiftCheckTests.xctest */,
+				3FBD00061F76D2A200EC5E80 /* SwiftCheck.framework */,
+				3FBD00081F76D2A200EC5E80 /* SwiftCheck-iOSTests.xctest */,
+				3FBD000A1F76D2A200EC5E80 /* SwiftCheck.framework */,
+				3FBD000C1F76D2A200EC5E80 /* SwiftCheck-tvOSTests.xctest */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -179,6 +238,12 @@
 			mainGroup = 3F9DB6311F76A40F001DAECD;
 			productRefGroup = 3F9DB63B1F76A40F001DAECD /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 3FBDFFF91F76D2A200EC5E80 /* Products */;
+					ProjectRef = 3FBDFFF81F76D2A200EC5E80 /* SwiftCheck.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				3F9DB6391F76A40F001DAECD /* ModernHAL */,
@@ -186,6 +251,51 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		3FBD00021F76D2A200EC5E80 /* SwiftCheck.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = SwiftCheck.framework;
+			remoteRef = 3FBD00011F76D2A200EC5E80 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		3FBD00041F76D2A200EC5E80 /* SwiftCheckTests.xctest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = SwiftCheckTests.xctest;
+			remoteRef = 3FBD00031F76D2A200EC5E80 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		3FBD00061F76D2A200EC5E80 /* SwiftCheck.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = SwiftCheck.framework;
+			remoteRef = 3FBD00051F76D2A200EC5E80 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		3FBD00081F76D2A200EC5E80 /* SwiftCheck-iOSTests.xctest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = "SwiftCheck-iOSTests.xctest";
+			remoteRef = 3FBD00071F76D2A200EC5E80 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		3FBD000A1F76D2A200EC5E80 /* SwiftCheck.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = SwiftCheck.framework;
+			remoteRef = 3FBD00091F76D2A200EC5E80 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		3FBD000C1F76D2A200EC5E80 /* SwiftCheck-tvOSTests.xctest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = "SwiftCheck-tvOSTests.xctest";
+			remoteRef = 3FBD000B1F76D2A200EC5E80 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		3F9DB6381F76A40F001DAECD /* Resources */ = {
