@@ -14,10 +14,11 @@ func modernhal_do_reply(input: String) -> String {
         
         modernhal_learn(model: model, words: words)
         
-        let output = generate_reply(model, words)
-        capitalize(output)
+        let output = modernhal_generate_reply(model: model, words: words)
         
-        return output.map { String(cString: $0) } ?? ""
+        var outputData = output.data(using: .utf8)
+        outputData?.withUnsafeMutableBytes { capitalize($0) }
+        return outputData.map { String(data: $0, encoding: .utf8)! }!
     }
 }
 
@@ -57,4 +58,38 @@ func modernhal_learn(model: UnsafeMutablePointer<MODEL>,
         
         update_model(model, 1)
     }
+}
+
+let dummy = new_dictionary()
+func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
+                              words: UnsafeMutablePointer<DICTIONARY>) -> String
+{
+    var output   = "I don't know enough to answer you yet!"
+    let keywords = make_keywords(model, words)
+    
+    var replywords = reply(model, dummy)
+    
+    if dissimilar(words, replywords) {
+        let string = make_output(replywords)!
+        output = String(cString: string)
+    }
+    
+    var count = 0
+    var maxSurprise : Float = -10.0
+    
+    for _ in 0 ..< 10 {
+        replywords = reply(model, keywords)
+        let surprise = evaluate_reply(model, keywords, replywords)
+        
+        count += 1
+        
+        if surprise > maxSurprise && dissimilar(words, replywords) {
+            maxSurprise = surprise
+            
+            let string = make_output(replywords)!
+            output = String(cString: string)
+        }
+    }
+    
+    return output
 }
