@@ -29,12 +29,7 @@
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
-#if defined(__mac_os)
-#include <types.h>
-#include <Speech.h>
-#else
 #include <sys/types.h>
-#endif
 #include "megahal.h"
 
 #define P_THINK 40
@@ -55,10 +50,6 @@
 #define BYTE1 unsigned char
 #define BYTE2 unsigned short
 #define BYTE4 unsigned long
-
-#ifdef __mac_os
-#define bool Boolean
-#endif
 
 #ifdef DOS
 #define SEP "\\"
@@ -81,11 +72,9 @@
 #define isspace(x) IsSpace(_AmigaLocale,x)
 #endif
 
-#ifndef __mac_os
 #undef FALSE
 #undef TRUE
 typedef enum { FALSE, TRUE } bool;
-#endif
 
 typedef struct {
     BYTE1 length;
@@ -180,11 +169,6 @@ static COMMAND command[] = {
 struct Locale *_AmigaLocale;
 #endif
 
-#ifdef __mac_os
-Boolean gSpeechExists = false;
-SpeechChannel gSpeechChannel = nil;
-#endif
-
 /* FIXME - these need to be static  */
 
 static void add_aux(MODEL *, DICTIONARY *, STRING);
@@ -196,7 +180,6 @@ static BYTE2 add_word(DICTIONARY *, STRING);
 static int babble(MODEL *, DICTIONARY *, DICTIONARY *);
 static bool boundary(char *, int);
 static void capitalize(char *);
-static void changevoice(DICTIONARY *, int);
 static void change_personality(DICTIONARY *, unsigned int, MODEL **);
 static void delay(char *);
 static void die(int);
@@ -212,27 +195,17 @@ static char *generate_reply(MODEL *, DICTIONARY *);
 static void help(void);
 static void ignore(int);
 static bool initialize_error(char *);
-#ifdef __mac_os
-static bool initialize_speech(void);
-#endif
 static bool initialize_status(char *);
 static void learn(MODEL *, DICTIONARY *);
-static void listvoices(void);
 static void make_greeting(DICTIONARY *);
 static void make_words(char *, DICTIONARY *);
 static DICTIONARY *new_dictionary(void);
 
 static char *read_input(char *);
 static void save_model(char *, MODEL *);
-#ifdef __mac_os
-static char *strdup(const char *);
-#endif
 static void upper(char *);
 static void write_input(char *);
 static void write_output(char *);
-#if defined(DOS) || defined(__mac_os)
-static void usleep(int);
-#endif
 
 
 static char *format_output(char *);
@@ -265,7 +238,6 @@ static int search_dictionary(DICTIONARY *, STRING, bool *);
 static int search_node(TREE *, int, bool *);
 static int seed(MODEL *, DICTIONARY *);
 static void show_dictionary(DICTIONARY *);
-static void speak(char *);
 static bool status(char *, ...);
 static void train(MODEL *, char *);
 static void typein(char);
@@ -332,9 +304,7 @@ void megahal_initialize(void)
 #ifdef AMIGA
     _AmigaLocale=OpenLocale(NULL);
 #endif
-#ifdef __mac_os
-    gSpeechExists = initialize_speech();
-#endif
+    
     if(!nobanner)
         fprintf(stdout,
                 "+------------------------------------------------------------------------+\n"
@@ -484,10 +454,8 @@ int megahal_command(char *input)
             help();
             return 1;
         case VOICELIST:
-            listvoices();
             return 1;
         case VOICE:
-            changevoice(words, position);
             return 1;
         case BRAIN:
             change_personality(words, position, &model);
@@ -575,17 +543,6 @@ COMMAND_WORDS execute_command(DICTIONARY *words, int *position)
  */
 void exithal(void)
 {
-#ifdef __mac_os
-    /*
-     *		Must be called because it does use some system memory
-     */
-    if (gSpeechChannel) {
-        StopSpeech(gSpeechChannel);
-        DisposeSpeechChannel(gSpeechChannel);
-        gSpeechChannel = nil;
-    }
-#endif
-    
     exit(0);
 }
 
@@ -799,7 +756,6 @@ void write_output(char *output)
     char *bit;
     
     capitalize(output);
-    speak(output);
     
     width=75;
     formatted=format_output(output);
@@ -2847,213 +2803,12 @@ int rnd(int range)
     static bool flag=FALSE;
     
     if(flag==FALSE) {
-#if defined(__mac_os) || defined(DOS)
-        srand(time(NULL));
-#else
         srand48(time(NULL));
-#endif
     }
     flag=TRUE;
-#if defined(__mac_os) || defined(DOS)
-    return(rand()%range);
-#else
     return(floor(drand48()*(double)(range)));
-#endif
 }
 
-/*---------------------------------------------------------------------------*/
-
-/*
- *		Function:	Usleep
- *
- *		Purpose:		Simulate the Un*x function usleep.  Necessary because
- *						Microsoft provide no similar function.  Performed via
- *						a busy loop, which unnecessarily chews up the CPU.
- *						But Windows '95 isn't properly multitasking anyway, so
- *						no-one will notice.  Modified from a real Microsoft
- *						example, believe it or not!
- */
-#if defined(DOS) || defined(__mac_os)
-void usleep(int period)
-{
-    clock_t goal;
-    
-    goal=(clock_t)(period*CLOCKS_PER_SEC)/(clock_t)1000000+clock();
-    while(goal>clock());
-}
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
- *		Function:	Strdup
- *
- *		Purpose:		Provide the strdup() function for Macintosh.
- */
-#ifdef __mac_os
-char *strdup(const char *str)
-{
-    char *rval=(char *)malloc(strlen(str)+1);
-    
-    if(rval!=NULL) strcpy(rval, str);
-    
-    return(rval);
-}
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
- *		Function:	Initialize_Speech
- *
- *		Purpose:		Initialize speech output.
- */
-#ifdef __mac_os
-bool initialize_speech(void)
-{
-    bool speechExists = false;
-    long response;
-    OSErr err;
-    
-    err = Gestalt(gestaltSpeechAttr, &response);
-    
-    if(!err) {
-        if(response & (1L << gestaltSpeechMgrPresent)) {
-            speechExists = true;
-        }
-    }
-    return speechExists;
-}
-#endif
-
-/*---------------------------------------------------------------------------*/
-
-/*
- *		Function:	changevoice
- *
- *		Purpose:		change voice of speech output.
- */
-void changevoice(DICTIONARY* words, int position)
-{
-#ifdef __mac_os
-    register int i, index;
-    STRING word={ 1, "#" };
-    char buffer[80];
-    VoiceSpec voiceSpec;
-    VoiceDescription info;
-    short count, voiceCount;
-    unsigned char* temp;
-    OSErr err;
-    /*
-     *		If there is less than 4 words, no voice specified.
-     */
-    if(words->size<=4) return;
-    
-    for(i=0; i<words->size-4; ++i)
-        if(wordcmp(word, words->entry[i])==0) {
-            
-            err = CountVoices(&voiceCount);
-            if (!err && voiceCount) {
-                for (count = 1; count <= voiceCount; count++) {
-                    err = GetIndVoice(count, &voiceSpec);
-                    if (err) continue;
-                    err = GetVoiceDescription(&voiceSpec, &info,
-                                              sizeof(VoiceDescription));
-                    if (err) continue;
-                    
-                    
-                    for (temp= info.name; *temp; temp++) {
-                        if (*temp == ' ')
-                            *temp = '_';
-                    }
-                    
-                    /*
-                     *        skip command and get voice name
-                     */
-                    index = i + 3;
-                    strcpy(buffer, words->entry[index].word);
-                    c2pstr(buffer);
-                    // compare ignoring case
-                    if (EqualString((StringPtr)buffer, info.name, false, false)) {
-                        if (gSpeechChannel) {
-                            StopSpeech(gSpeechChannel);
-                            DisposeSpeechChannel(gSpeechChannel);
-                            gSpeechChannel = nil;
-                        }
-                        err = NewSpeechChannel(&voiceSpec, &gSpeechChannel);
-                        if (!err) {
-                            p2cstr((StringPtr)buffer);
-                            printf("Now using %s voice\n", buffer);
-                            c2pstr(buffer);
-                            err = SpeakText(gSpeechChannel, &buffer[1], buffer[0]);
-                        }
-                    }
-                }
-            }
-        }
-#endif
-}
-
-/*---------------------------------------------------------------------------*/
-
-/*
- *		Function:	listvoices
- *
- *		Purpose:		Display the names of voices for speech output.
- */
-void listvoices(void)
-{
-#ifdef __mac_os
-    VoiceSpec voiceSpec;
-    VoiceDescription info;
-    short count, voiceCount;
-    unsigned char* temp;
-    OSErr err;
-    
-    if(gSpeechExists) {
-        err = CountVoices(&voiceCount);
-        if (!err && voiceCount) {
-            for (count = 1; count <= voiceCount; count++) {
-                err = GetIndVoice(count, &voiceSpec);
-                if (err) continue;
-                
-                err = GetVoiceDescription(&voiceSpec, &info,
-                                          sizeof(VoiceDescription));
-                if (err) continue;
-                
-                p2cstr(info.name);
-                for (temp= info.name; *temp; temp++)
-                    if (*temp == ' ')
-                        *temp = '_';
-                printf("%s\n",info.name);
-            }
-        }
-    }
-#endif
-}
-
-/*---------------------------------------------------------------------------*/
-
-/*
- *		Function:	Speak
- */
-void speak(char *output)
-{
-    if(speech==FALSE) return;
-#ifdef __mac_os
-    if(gSpeechExists) {
-        OSErr err;
-        
-        if (gSpeechChannel)
-            err = SpeakText(gSpeechChannel, output, strlen(output));
-        else {
-            c2pstr(output);
-            SpeakString((StringPtr)output);
-            p2cstr((StringPtr)output);
-        }
-    }
-#endif
-}
 
 /*---------------------------------------------------------------------------*/
 

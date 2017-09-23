@@ -38,7 +38,7 @@
 		3F9DB6521F76A40F001DAECD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3FBDFFF41F76A56500EC5E80 /* ModernHAL-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "ModernHAL-Bridging-Header.h"; path = "ModernHAL/ModernHAL-Bridging-Header.h"; sourceTree = "<group>"; };
 		3FBDFFF51F76A56500EC5E80 /* megahal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = megahal.c; path = ModernHAL/megahal.c; sourceTree = "<group>"; };
-		3FBDFFF71F76A5CE00EC5E80 /* megahal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = megahal.h; path = "../ModernHAL.old/megahal-9.1.1/megahal.h"; sourceTree = "<group>"; };
+		3FBDFFF71F76A5CE00EC5E80 /* megahal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = megahal.h; path = ModernHAL/megahal.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
