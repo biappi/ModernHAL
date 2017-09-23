@@ -8,6 +8,18 @@
 
 import Foundation
 
+extension MODEL {
+    mutating func initializeForward() {
+        initialize_context(&self)
+        context.advanced(by: 0).pointee = forward
+    }
+    
+    mutating func initializeBackward() {
+        initialize_context(&self)
+        context.advanced(by: 0).pointee = backward
+    }
+}
+
 func modernhal_do_reply(input: String) -> String {
     return input.uppercased().withCString {
         make_words(UnsafeMutablePointer(mutating: $0), words)
@@ -31,9 +43,7 @@ func modernhal_learn(model: UnsafeMutablePointer<MODEL>,
     
     do {
         // Forward training
-        
-        initialize_context(model)
-        model.pointee.context.advanced(by: 0).pointee = model.pointee.forward
+        model.pointee.initializeForward()
         
         for i in 0 ..< words.pointee.size {
             let symbol = add_word(model.pointee.dictionary,
@@ -46,9 +56,7 @@ func modernhal_learn(model: UnsafeMutablePointer<MODEL>,
     
     do {
         // Backwards training
-        
-        initialize_context(model)
-        model.pointee.context.advanced(by: 0).pointee = model.pointee.backward
+        model.pointee.initializeBackward()
         
         for i in (0 ..< words.pointee.size).reversed() {
             let symbol = add_word(model.pointee.dictionary,
@@ -101,8 +109,7 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
 {
     free_dictionary(replies)
     
-    initialize_context(model)
-    model.pointee.context.advanced(by: 0).pointee = model.pointee.forward
+    model.pointee.initializeForward()
     
     used_key = false
     
@@ -141,8 +148,7 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
         update_context(model, symbol)
     }
     
-    initialize_context(model)
-    model.pointee.context.advanced(by: 0).pointee = model.pointee.backward
+    model.pointee.initializeBackward()
     
     if replies.pointee.size > 0 {
         let size = min(Int(replies.pointee.size), Int(model.pointee.order))
@@ -189,3 +195,4 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
     
     return replies
 }
+
