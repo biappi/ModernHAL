@@ -19,7 +19,6 @@
  *  675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -29,8 +28,6 @@
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
-#include <sys/types.h>
-#include <stdbool.h>
 
 #include "megahal.h"
 
@@ -51,78 +48,35 @@
 
 #define SEP "/"
 
-typedef struct {
-    uint8_t length;
-    char *word;
-} STRING;
+int width=75;
+int order=5;
 
-typedef struct {
-    uint32_t size;
-    STRING *entry;
-    uint16_t *index;
-} DICTIONARY;
+bool typing_delay=false;
+bool noprompt=false;
+bool speech=false;
+bool quiet=false;
+bool nowrap=false;
+bool nobanner=false;
 
-typedef struct {
-    uint16_t size;
-    STRING *from;
-    STRING *to;
-} SWAP;
+char *errorfilename = "megahal.log";
+char *statusfilename = "megahal.txt";
+DICTIONARY *words=NULL;
+DICTIONARY *greets=NULL;
+MODEL *model=NULL;
 
-typedef struct NODE {
-    uint16_t symbol;
-    uint32_t usage;
-    uint16_t count;
-    uint16_t branch;
-    struct NODE **tree;
-} TREE;
+FILE *errorfp;
+FILE *statusfp;
 
-typedef struct {
-    uint8_t order;
-    TREE *forward;
-    TREE *backward;
-    TREE **context;
-    DICTIONARY *dictionary;
-} MODEL;
-
-typedef enum { UNKNOWN, QUIT, EXIT, SAVE, DELAY, HELP, SPEECH, VOICELIST, VOICE, BRAIN, QUIET} COMMAND_WORDS;
-
-typedef struct {
-    STRING word;
-    char *helpstring;
-    COMMAND_WORDS command;
-} COMMAND;
-
-/*===========================================================================*/
-
-static int width=75;
-static int order=5;
-
-static bool typing_delay=false;
-static bool noprompt=false;
-static bool speech=false;
-static bool quiet=false;
-static bool nowrap=false;
-static bool nobanner=false;
-
-static char *errorfilename = "megahal.log";
-static char *statusfilename = "megahal.txt";
-static DICTIONARY *words=NULL;
-static DICTIONARY *greets=NULL;
-static MODEL *model=NULL;
-
-static FILE *errorfp;
-static FILE *statusfp;
-
-static DICTIONARY *ban=NULL;
-static DICTIONARY *aux=NULL;
+DICTIONARY *ban=NULL;
+DICTIONARY *aux=NULL;
 /*static DICTIONARY *fin=NULL; not used */
-static DICTIONARY *grt=NULL;
-static SWAP *swp=NULL;
-static bool used_key;
-static char *directory=NULL;
-static char *last=NULL;
+DICTIONARY *grt=NULL;
+SWAP *swp=NULL;
+bool used_key;
+char *directory=NULL;
+char *last=NULL;
 
-static COMMAND command[] = {
+COMMAND command[] = {
     { { 4, "QUIT" }, "quits the program and saves MegaHAL's brain", QUIT },
     { { 4, "EXIT" }, "exits the program *without* saving MegaHAL's brain", EXIT },
     { { 4, "SAVE" }, "saves the current MegaHAL brain", SAVE },
@@ -139,84 +93,6 @@ static COMMAND command[] = {
      { { 5, "STATS-ALL" },"Display stats for the whole lifetime",STATS-ALL},
      */
 };
-
-/* FIXME - these need to be static  */
-
-static void add_aux(MODEL *, DICTIONARY *, STRING);
-static void add_key(MODEL *, DICTIONARY *, STRING);
-static void add_node(TREE *, TREE *, int);
-static void add_swap(SWAP *, char *, char *);
-static TREE *add_symbol(TREE *, uint16_t);
-static uint16_t add_word(DICTIONARY *, STRING);
-static int babble(MODEL *, DICTIONARY *, DICTIONARY *);
-static bool boundary(char *, int);
-static void capitalize(char *);
-static void change_personality(DICTIONARY *, unsigned int, MODEL **);
-static void delay(char *);
-static void die(int);
-static bool dissimilar(DICTIONARY *, DICTIONARY *);
-static void error(char *, char *, ...);
-static float evaluate_reply(MODEL *, DICTIONARY *, DICTIONARY *);
-static COMMAND_WORDS execute_command(DICTIONARY *, int *);
-static void exithal(void);
-static TREE *find_symbol(TREE *, int);
-static TREE *find_symbol_add(TREE *, int);
-static uint16_t find_word(DICTIONARY *, STRING);
-static char *generate_reply(MODEL *, DICTIONARY *);
-static void help(void);
-static void ignore(int);
-static bool initialize_error(char *);
-static bool initialize_status(char *);
-static void learn(MODEL *, DICTIONARY *);
-static void make_greeting(DICTIONARY *);
-static void make_words(char *, DICTIONARY *);
-static DICTIONARY *new_dictionary(void);
-
-static char *read_input(char *);
-static void save_model(char *, MODEL *);
-static void upper(char *);
-static void write_input(char *);
-static void write_output(char *);
-
-
-static char *format_output(char *);
-static void free_dictionary(DICTIONARY *);
-static void free_model(MODEL *);
-static void free_tree(TREE *);
-static void free_word(STRING);
-static void free_words(DICTIONARY *);
-static void initialize_context(MODEL *);
-static void initialize_dictionary(DICTIONARY *);
-static DICTIONARY *initialize_list(char *);
-static SWAP *initialize_swap(char *);
-static void load_dictionary(FILE *, DICTIONARY *);
-static bool load_model(char *, MODEL *);
-static void load_personality(MODEL **);
-static void load_tree(FILE *, TREE *);
-static void load_word(FILE *, DICTIONARY *);
-static DICTIONARY *make_keywords(MODEL *, DICTIONARY *);
-static char *make_output(DICTIONARY *);
-static MODEL *new_model(int);
-static TREE *new_node(void);
-static SWAP *new_swap(void);
-static bool print_header(FILE *);
-static bool progress(char *, int, int);
-static DICTIONARY *reply(MODEL *, DICTIONARY *);
-static void save_dictionary(FILE *, DICTIONARY *);
-static void save_tree(FILE *, TREE *);
-static void save_word(FILE *, STRING);
-static int search_dictionary(DICTIONARY *, STRING, bool *);
-static int search_node(TREE *, int, bool *);
-static int seed(MODEL *, DICTIONARY *);
-static void show_dictionary(DICTIONARY *);
-static bool status(char *, ...);
-static void train(MODEL *, char *);
-static void typein(char);
-static void update_context(MODEL *, int);
-static void update_model(MODEL *, int);
-static int wordcmp(STRING, STRING);
-static bool word_exists(DICTIONARY *, STRING);
-static int rnd(int);
 
 
 /* Function: setnoprompt
@@ -802,7 +678,7 @@ void write_input(char *input)
  *    Purpose:    Format a string to display nicely on a terminal of a given
  *                width.
  */
-static char *format_output(char *output)
+char *format_output(char *output)
 {
     static char *formatted=NULL;
     register unsigned int i,j,c;

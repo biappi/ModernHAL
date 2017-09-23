@@ -76,4 +76,128 @@ char *megahal_input(char *prompt);
 
 void megahal_cleanup(void);
 
+/* internals */
+
+#include <stdio.h>
+#include <stdbool.h>
+
+typedef struct {
+    uint8_t length;
+    char *word;
+} STRING;
+
+typedef struct {
+    uint32_t size;
+    STRING *entry;
+    uint16_t *index;
+} DICTIONARY;
+
+typedef struct {
+    uint16_t size;
+    STRING *from;
+    STRING *to;
+} SWAP;
+
+typedef struct NODE {
+    uint16_t symbol;
+    uint32_t usage;
+    uint16_t count;
+    uint16_t branch;
+    struct NODE **tree;
+} TREE;
+
+typedef struct {
+    uint8_t order;
+    TREE *forward;
+    TREE *backward;
+    TREE **context;
+    DICTIONARY *dictionary;
+} MODEL;
+
+typedef enum { UNKNOWN, QUIT, EXIT, SAVE, DELAY, HELP, SPEECH, VOICELIST, VOICE, BRAIN, QUIET} COMMAND_WORDS;
+
+typedef struct {
+    STRING word;
+    char *helpstring;
+    COMMAND_WORDS command;
+} COMMAND;
+
+/*===========================================================================*/
+
+void add_aux(MODEL *, DICTIONARY *, STRING);
+void add_key(MODEL *, DICTIONARY *, STRING);
+void add_node(TREE *, TREE *, int);
+void add_swap(SWAP *, char *, char *);
+TREE *add_symbol(TREE *, uint16_t);
+uint16_t add_word(DICTIONARY *, STRING);
+int babble(MODEL *, DICTIONARY *, DICTIONARY *);
+bool boundary(char *, int);
+void capitalize(char *);
+void change_personality(DICTIONARY *, unsigned int, MODEL **);
+void delay(char *);
+void die(int);
+bool dissimilar(DICTIONARY *, DICTIONARY *);
+void error(char *, char *, ...);
+float evaluate_reply(MODEL *, DICTIONARY *, DICTIONARY *);
+COMMAND_WORDS execute_command(DICTIONARY *, int *);
+void exithal(void);
+TREE *find_symbol(TREE *, int);
+TREE *find_symbol_add(TREE *, int);
+uint16_t find_word(DICTIONARY *, STRING);
+char *generate_reply(MODEL *, DICTIONARY *);
+void help(void);
+void ignore(int);
+bool initialize_error(char *);
+bool initialize_status(char *);
+void learn(MODEL *, DICTIONARY *);
+void make_greeting(DICTIONARY *);
+void make_words(char *, DICTIONARY *);
+DICTIONARY *new_dictionary(void);
+
+char *read_input(char *);
+void save_model(char *, MODEL *);
+void upper(char *);
+void write_input(char *);
+void write_output(char *);
+
+char *format_output(char *);
+void free_dictionary(DICTIONARY *);
+void free_model(MODEL *);
+void free_tree(TREE *);
+void free_word(STRING);
+void free_words(DICTIONARY *);
+void initialize_context(MODEL *);
+void initialize_dictionary(DICTIONARY *);
+DICTIONARY *initialize_list(char *);
+SWAP *initialize_swap(char *);
+void load_dictionary(FILE *, DICTIONARY *);
+bool load_model(char *, MODEL *);
+void load_personality(MODEL **);
+void load_tree(FILE *, TREE *);
+void load_word(FILE *, DICTIONARY *);
+DICTIONARY *make_keywords(MODEL *, DICTIONARY *);
+char *make_output(DICTIONARY *);
+MODEL *new_model(int);
+TREE *new_node(void);
+SWAP *new_swap(void);
+bool print_header(FILE *);
+bool progress(char *, int, int);
+DICTIONARY *reply(MODEL *, DICTIONARY *);
+void save_dictionary(FILE *, DICTIONARY *);
+void save_tree(FILE *, TREE *);
+void save_word(FILE *, STRING);
+int search_dictionary(DICTIONARY *, STRING, bool *);
+int search_node(TREE *, int, bool *);
+int seed(MODEL *, DICTIONARY *);
+void show_dictionary(DICTIONARY *);
+bool status(char *, ...);
+void train(MODEL *, char *);
+void typein(char);
+void update_context(MODEL *, int);
+void update_model(MODEL *, int);
+int wordcmp(STRING, STRING);
+bool word_exists(DICTIONARY *, STRING);
+int rnd(int);
+
+
 #endif /* MEGAHAL_H  */
