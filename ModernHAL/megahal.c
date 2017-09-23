@@ -24,9 +24,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <getopt.h>
-#if !defined(AMIGA) && !defined(__mac_os)
-#include <malloc.h>
-#endif
 #include <string.h>
 #include <signal.h>
 #include <math.h>
@@ -39,9 +36,6 @@
 #include <sys/types.h>
 #endif
 #include "megahal.h"
-#if defined(DEBUG)
-#include "debug.h"
-#endif
 
 #define P_THINK 40
 #define D_KEY 100000
