@@ -70,12 +70,14 @@ class Model {
 }
 
 func modernhal_do_reply(input: String) -> String {
+    let globalModel = Model(wrapping: model)
+    
     return input.uppercased().withCString {
         make_words(UnsafeMutablePointer(mutating: $0), words)
         
-        modernhal_learn(model: model, words: words)
+        modernhal_learn(model: globalModel, words: words)
         
-        let output = modernhal_generate_reply(model: model, words: words)
+        let output = modernhal_generate_reply(model: globalModel, words: words)
         
         var outputData = output.data(using: .utf8)
         outputData?.append(0)
@@ -85,11 +87,9 @@ func modernhal_do_reply(input: String) -> String {
     }
 }
 
-func modernhal_learn(model m: UnsafeMutablePointer<MODEL>,
+func modernhal_learn(model: Model,
                      words: UnsafeMutablePointer<DICTIONARY>)
 {
-    let model = Model(wrapping: m)
-    
     if words.pointee.size <= model.order {
         return
     }
@@ -117,14 +117,14 @@ func modernhal_learn(model m: UnsafeMutablePointer<MODEL>,
     }
 }
 
-let dummy = new_dictionary()
-func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
+let dummy = new_dictionary()!
+func modernhal_generate_reply(model: Model,
                               words: UnsafeMutablePointer<DICTIONARY>) -> String
 {
     var output   = "I don't know enough to answer you yet!"
-    let keywords = make_keywords(model, words)
+    let keywords = make_keywords(model.wrap, words)
     
-    var replywords = reply(model, dummy)
+    var replywords = modernhal_reply(model: model, keys: dummy)
     
     if dissimilar(words, replywords) {
         let string = make_output(replywords)!
@@ -136,7 +136,7 @@ func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
     
     for _ in 0 ..< 10 {
         replywords = modernhal_reply(model: model, keys: keywords!)
-        let surprise = modernhal_evaluate_reply(model: model, keys: keywords!, words: replywords!)
+        let surprise = modernhal_evaluate_reply(model: model, keys: keywords!, words: replywords)
         
         count += 1
         
@@ -152,15 +152,13 @@ func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
 }
 
 let replies = new_dictionary()!
-func modernhal_reply(model m: UnsafeMutablePointer<MODEL>,
+func modernhal_reply(model: Model,
                      keys:  UnsafeMutablePointer<DICTIONARY>)
     -> UnsafeMutablePointer<DICTIONARY>
 {
     
     free_dictionary(replies)
     
-    let model = Model(wrapping: m)
-        
     model.initializeForward()
     
     used_key = false
@@ -241,7 +239,7 @@ func modernhal_reply(model m: UnsafeMutablePointer<MODEL>,
     return replies
 }
 
-func modernhal_evaluate_reply(model m: UnsafeMutablePointer<MODEL>,
+func modernhal_evaluate_reply(model: Model,
                               keys:  UnsafeMutablePointer<DICTIONARY>,
                               words: UnsafeMutablePointer<DICTIONARY>)
     -> Float32
@@ -252,8 +250,6 @@ func modernhal_evaluate_reply(model m: UnsafeMutablePointer<MODEL>,
     
     var num = 0
     var entropy : Float32 = 0
-    
-    let model = Model(wrapping: m)
     
     model.initializeForward()
     
