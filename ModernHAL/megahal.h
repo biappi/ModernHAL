@@ -206,4 +206,6 @@ extern SWAP *swp;
 extern DICTIONARY *ban;
 extern DICTIONARY *aux;
 
+TREE *modernhal_longest_available_context(MODEL *model);
+
 #endif /* MEGAHAL_H  */

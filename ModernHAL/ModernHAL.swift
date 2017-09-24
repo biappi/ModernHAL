@@ -265,7 +265,7 @@ func modernhal_reply(model: Model,
             symbol = seed(model.wrap, keys.wrap)
         }
         else {
-            symbol = babble(model.wrap, keys.wrap, replies.wrap)
+            symbol = modernhal_babble(model: model, keys: keys, words: replies)
         }
         
         if symbol == 0 || symbol == 1 {
@@ -289,7 +289,7 @@ func modernhal_reply(model: Model,
         }
     
     while true {
-        symbol = babble(model.wrap, keys.wrap, replies.wrap)
+        symbol = modernhal_babble(model: model, keys: keys, words: replies)
         
         if symbol == 0 || symbol == 1 {
             break
@@ -480,4 +480,37 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
     }
     
     add_word(keys.wrap, word)
+}
+
+func modernhal_babble(model: Model, keys: Keywords, words: HalDictionary) -> Int32 {
+    guard let node = modernhal_longest_available_context(model.wrap) else {
+        return 0
+    }
+    
+    if node.pointee.branch == 0 {
+        return 0
+    }
+    
+    var i = Int(rnd(Int32(node.pointee.branch)))
+    var count = Int(rnd(Int32(node.pointee.usage)))
+    
+    var symbol : Int = 0
+    
+    while count >= 0 {
+        symbol = Int(node.pointee.tree.advanced(by: i).pointee!.pointee.symbol)
+        
+        if ((find_word(keys.wrap, model.word(for: symbol)) != 0) &&
+            ((used_key == true) || (find_word(aux, model.word(for: symbol)) == 0)) &&
+            (word_exists(words.wrap, model.word(for: symbol)) == false))
+        {
+            used_key = true
+            break;
+        }
+        
+        count -= Int(node.pointee.tree.advanced(by: i).pointee!.pointee.count)
+        
+        i = (i >= (node.pointee.branch - 1)) ? 0 : i + 1
+    }
+    
+    return Int32(symbol)
 }
