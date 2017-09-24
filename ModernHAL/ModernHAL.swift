@@ -8,15 +8,21 @@
 
 import Foundation
 
-extension MODEL {
-    mutating func initializeForward() {
-        initialize_context(&self)
-        context.advanced(by: 0).pointee = forward
+class Model {
+    let wrap : UnsafeMutablePointer<MODEL>
+        
+    init(wrapping model: UnsafeMutablePointer<MODEL>) {
+        wrap = model
     }
     
-    mutating func initializeBackward() {
-        initialize_context(&self)
-        context.advanced(by: 0).pointee = backward
+    func initializeForward() {
+        initialize_context(wrap)
+        wrap.pointee.context.advanced(by: 0).pointee = wrap.pointee.forward
+    }
+    
+    func initializeBackward() {
+        initialize_context(wrap)
+        wrap.pointee.context.advanced(by: 0).pointee = wrap.pointee.backward
     }
 }
 
@@ -45,7 +51,7 @@ func modernhal_learn(model: UnsafeMutablePointer<MODEL>,
     
     do {
         // Forward training
-        model.pointee.initializeForward()
+        Model(wrapping: model).initializeForward()
         
         for i in 0 ..< words.pointee.size {
             let symbol = add_word(model.pointee.dictionary,
@@ -58,7 +64,7 @@ func modernhal_learn(model: UnsafeMutablePointer<MODEL>,
     
     do {
         // Backwards training
-        model.pointee.initializeBackward()
+        Model(wrapping: model).initializeBackward()
         
         for i in (0 ..< words.pointee.size).reversed() {
             let symbol = add_word(model.pointee.dictionary,
@@ -111,7 +117,7 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
 {
     free_dictionary(replies)
     
-    model.pointee.initializeForward()
+    Model(wrapping: model).initializeForward()
     
     used_key = false
     
@@ -150,7 +156,7 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
         update_context(model, symbol)
     }
     
-    model.pointee.initializeBackward()
+    Model(wrapping: model).initializeBackward()
     
     if replies.pointee.size > 0 {
         let size = min(Int(replies.pointee.size), Int(model.pointee.order))
@@ -210,7 +216,7 @@ func modernhal_evaluate_reply(model: UnsafeMutablePointer<MODEL>,
     var num = 0
     var entropy : Float32 = 0
     
-    model.pointee.initializeForward()
+    Model(wrapping: model).initializeForward()
     
     for i in 0 ..< Int(words.pointee.size) {
         let symbol = find_word(model.pointee.dictionary, words.pointee.entry.advanced(by: i).pointee)
@@ -238,8 +244,7 @@ func modernhal_evaluate_reply(model: UnsafeMutablePointer<MODEL>,
     }
     
     
-    initialize_context(model)
-    model.pointee.context.advanced(by: 0).pointee = model.pointee.backward
+    Model(wrapping: model).initializeBackward()
     
     for i in (0 ..< Int(words.pointee.size)).reversed() {
         let symbol = find_word(model.pointee.dictionary, words.pointee.entry.advanced(by: i).pointee)
