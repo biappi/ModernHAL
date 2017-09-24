@@ -185,7 +185,7 @@ func modernhal_learn(model: Model,
     }
 }
 
-let dummy = new_dictionary()!
+let dummy = HalDictionary.new()
 func modernhal_generate_reply(model: Model,
                               words: UnsafeMutablePointer<DICTIONARY>) -> String
 {
@@ -203,7 +203,7 @@ func modernhal_generate_reply(model: Model,
     var maxSurprise : Float32 = -10.0
     
     for _ in 0 ..< 10 {
-        replywords = modernhal_reply(model: model, keys: keywords.wrap)
+        replywords = modernhal_reply(model: model, keys: keywords)
         let surprise = modernhal_evaluate_reply(model: model,
                                                 keys: keywords,
                                                 words: replywords)
@@ -223,7 +223,7 @@ func modernhal_generate_reply(model: Model,
 
 let replies = HalDictionary.new()
 func modernhal_reply(model: Model,
-                     keys:  UnsafeMutablePointer<DICTIONARY>)
+                     keys:  HalDictionary)
     -> HalDictionary
 {
     replies.clear()
@@ -237,10 +237,10 @@ func modernhal_reply(model: Model,
     
     while true {
         if start {
-            symbol = seed(model.wrap, keys)
+            symbol = seed(model.wrap, keys.wrap)
         }
         else {
-            symbol = babble(model.wrap, keys, replies.wrap)
+            symbol = babble(model.wrap, keys.wrap, replies.wrap)
         }
         
         if symbol == 0 || symbol == 1 {
@@ -264,7 +264,7 @@ func modernhal_reply(model: Model,
         }
     
     while true {
-        symbol = babble(model.wrap, keys, replies.wrap)
+        symbol = babble(model.wrap, keys.wrap, replies.wrap)
         
         if symbol == 0 || symbol == 1 {
             break
