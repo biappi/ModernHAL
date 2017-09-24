@@ -143,6 +143,28 @@ class HalDictionary : Sequence {
     }
 }
 
+extension SWAP : Collection {
+    public var startIndex : Int { return 0 }
+    public var endIndex   : Int { return Int(size) }
+    
+    public func index(after i: Int) -> Int { return i + 1 }
+    
+    public subscript(i: Int) -> (from: STRING, to: STRING) {
+        return (from: from.advanced(by: i).pointee,
+                to:   to.advanced(by: i).pointee)
+    }
+    
+    subscript(from: STRING) -> [STRING]
+    {
+        return Array(
+            self
+                .lazy
+                .filter { wordcmp($0.from, from) == 0 }
+                .map { $0.to }
+        )
+    }
+}
+
 func modernhal_do_reply(input: String) -> String {
     let globalModel = Model(wrapping: model)
     let globalWords = HalDictionary(wrapping: words)
@@ -404,35 +426,16 @@ func modernhal_make_keywords(model: Model, words: HalDictionary) -> HalDictionar
     keys.clear()
     
     for word in words {
-        var c = 0
-        
-        for j in 0 ..< Int(swp.pointee.size) {
-            if wordcmp(swp.pointee.from.advanced(by: j).pointee, word) == 0
-            {
-                add_key(model.wrap, keys.wrap, swp.pointee.to.advanced(by: j).pointee)
-                c += 1
-            }
-        }
-        
-        if c == 0 {
-            add_key(model.wrap, keys.wrap, word)
-        }
+        let swaps = swp.pointee[word]
+        let toAdd = swaps.isEmpty ? [word] : swaps
+        toAdd.forEach { add_key(model.wrap, keys.wrap, $0) }
     }
     
     if keys.size > 0 {
         for word in words {
-            var c = 0
-            
-            for j in 0 ..< Int(swp.pointee.size) {
-                if wordcmp(swp.pointee.from.advanced(by: j).pointee, word) == 0 {
-                    add_aux(model.wrap, keys.wrap, swp.pointee.to.advanced(by: j).pointee)
-                    c += 1
-                }
-            }
-            
-            if c == 0 {
-                add_aux(model.wrap, keys.wrap, word)
-            }
+            let swaps = swp.pointee[word]
+            let toAdd = swaps.isEmpty ? [word] : swaps
+            toAdd.forEach { add_aux(model.wrap, keys.wrap, $0) }
         }
     }
     
