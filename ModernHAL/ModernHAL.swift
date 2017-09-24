@@ -69,6 +69,18 @@ class Model {
     }
 }
 
+class HalDictionary {
+    let wrap : UnsafeMutablePointer<DICTIONARY>
+    
+    init(wrapping model: UnsafeMutablePointer<DICTIONARY>) {
+        wrap = model
+    }
+    
+    func find(word: STRING) -> Int {
+        return Int(find_word(wrap, word))
+    }
+}
+
 func modernhal_do_reply(input: String) -> String {
     let globalModel = Model(wrapping: model)
     
@@ -240,7 +252,7 @@ func modernhal_reply(model: Model,
 }
 
 func modernhal_evaluate_reply(model: Model,
-                              keys:  UnsafeMutablePointer<DICTIONARY>,
+                              keys k:  UnsafeMutablePointer<DICTIONARY>,
                               words: UnsafeMutablePointer<DICTIONARY>)
     -> Float32
 {
@@ -251,12 +263,14 @@ func modernhal_evaluate_reply(model: Model,
     var num = 0
     var entropy : Float32 = 0
     
+    let keys = HalDictionary(wrapping: k)
+    
     model.initializeForward()
     
     for i in 0 ..< Int(words.pointee.size) {
         let symbol = model.symbol(for: words.pointee.entry.advanced(by: i).pointee)
         
-        if find_word(keys, words.pointee.entry.advanced(by: i).pointee) != 0 {
+        if keys.find(word: words.pointee.entry.advanced(by: i).pointee) != 0 {
             var probability : Float32 = 0
             var count       : Int = 0
             
@@ -282,7 +296,7 @@ func modernhal_evaluate_reply(model: Model,
     for i in (0 ..< Int(words.pointee.size)).reversed() {
         let symbol = model.symbol(for: words.pointee.entry.advanced(by: i).pointee)
         
-        if find_word(keys, words.pointee.entry.advanced(by: i).pointee) != 0 {
+        if keys.find(word:  words.pointee.entry.advanced(by: i).pointee) != 0 {
             var probability : Float = 0
             var count       : Float = 0
             
