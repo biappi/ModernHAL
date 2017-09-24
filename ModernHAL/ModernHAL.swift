@@ -135,6 +135,12 @@ class HalDictionary : Sequence {
         wrap.pointee.entry.advanced(by: 0).pointee = word
         wrap.pointee.size += 1
     }
+    
+    var last : STRING? {
+        return size != 0
+            ? wrap.pointee.entry[size - 1]
+            : nil
+    }
 }
 
 func modernhal_do_reply(input: String) -> String {
@@ -142,7 +148,7 @@ func modernhal_do_reply(input: String) -> String {
     let globalWords = HalDictionary(wrapping: words)
     
     return input.uppercased().withCString {
-        make_words(UnsafeMutablePointer(mutating: $0), globalWords.wrap)
+        modernhal_make_words(from: UnsafeMutablePointer(mutating: $0), in: globalWords)
         
         modernhal_learn(model: globalModel, words: globalWords)
         
@@ -340,3 +346,54 @@ func modernhal_evaluate_reply(model: Model,
     return entropy
 }
 
+var dot : STRING = {
+    let d = ".".data(using: .utf8)!
+    let p = UnsafeMutablePointer<Int8>.allocate(capacity: d.count)
+    let b = UnsafeMutableBufferPointer(start: p, count: d.count)
+    _ = d.copyBytes(to: b)
+    
+    return STRING(length: UInt8(d.count), word: p)
+}()
+
+func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary: HalDictionary) {
+    dictionary.clear()
+    
+    if strlen(input) == 0 {
+        return
+    }
+    
+    var input  = input
+    var offset = 0
+    
+    while true {
+        if boundary(input, Int32(offset)) {
+            dictionary.append(word: STRING(length: UInt8(offset), word: input))
+            
+            if offset == strlen(input) {
+                break
+            }
+            
+            input = input.advanced(by: offset)
+            offset = 0
+        }
+        else {
+            offset += 1
+        }
+    }
+    
+    let last = dictionary.last!
+    if isalnum(Int32(last.word.advanced(by: 0).pointee)) != 0 {
+        dictionary.append(word: dot)
+    }
+    else {
+        let lastChar = last.word.advanced(by: Int(last.length) - 1)
+        
+        let lastCharNotPoints = "!.?".withCString { (s) -> Bool in
+            return strchr(s, Int32(lastChar.pointee)) == nil
+        }
+        
+        if lastCharNotPoints {
+            lastChar.pointee = dot.word.advanced(by: 0).pointee
+        }
+    }
+}
