@@ -96,8 +96,9 @@ class ModernHALTests: XCTestCase {
             forAll(strings) { (s: String) in
                 
                 var stringData = s.data(using: .utf8)!
+                stringData.append(0)
                 stringData.withUnsafeMutableBytes { upper($0) }
-                
+                stringData.remove(at: stringData.count - 1)
                 let uppercased = String(bytes: stringData, encoding: .utf8)!
                 
                 return uppercased == s.uppercased()

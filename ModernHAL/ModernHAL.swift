@@ -29,7 +29,9 @@ func modernhal_do_reply(input: String) -> String {
         let output = modernhal_generate_reply(model: model, words: words)
         
         var outputData = output.data(using: .utf8)
+        outputData?.append(0)
         outputData?.withUnsafeMutableBytes { capitalize($0) }
+        outputData!.remove(at: outputData!.count - 1)
         return outputData.map { String(data: $0, encoding: .utf8)! }!
     }
 }
