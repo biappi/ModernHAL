@@ -28,12 +28,14 @@ let strings = letters
     .suchThat { $0.count > 1 }
     .map { String.init($0) }
 
-let words = Gen<String>.fromElements(of: [
+let word = Gen<String>.fromElements(of: [
     "test",
     "one",
     "two",
     "three"
 ])
+    
+let words = word
     .proliferate
     .flatMap { Gen<String>.pure($0.joined(separator: " ")) }
 
@@ -47,6 +49,18 @@ let smokeTestInput = [
     "test one test two test three",
     "one test two test three test",
 ]
+
+extension STRING {
+    init(_ s: String) {
+        let d = s.data(using: .utf8)!
+        let p = UnsafeMutablePointer<Int8>.allocate(capacity: d.count)
+        let b = UnsafeMutableBufferPointer(start: p, count: d.count)
+        _ = d.copyBytes(to: b)
+        
+        length = UInt8(d.count)
+        word = p
+    }
+}
 
 class ModernHALTests: XCTestCase {
     
@@ -121,26 +135,36 @@ class ModernHALTests: XCTestCase {
             }
         
         property("do_reply") <-
-            forAllNoShrink(words) { (string: String) in
+        forAllNoShrink(words) { (string: String) in
+            
+            return string.withCString {
+                let a = word.generate
+                let b = word.generate
+                let c = word.generate
                 
-                return string.withCString {
-                    megahal_initialize()
-                    
-                    let s      = UnsafeMutablePointer(mutating: $0)
-                    srand48(0)
-                    let first  = String(cString: megahal_do_reply(s, 0))
-                    srand48(0)
-                    megahal_initialize()
-                    
-                    let second = modernhal_do_reply(input: string)
-                    
-                    print(first)
-                    print(second)
-                    
-                    return first == second
-                }
+                megahal_initialize()
+                add_word(aux, STRING(a))
+                add_word(aux, STRING(b))
+                add_word(aux, STRING(c))
+                
+                srand48(0)
+                
+                let s      = UnsafeMutablePointer(mutating: $0)
+                let first  = String(cString: megahal_do_reply(s, 0))
+                print(first)
+                
+                srand48(0)
+                megahal_initialize()
+                add_word(aux, STRING(a))
+                add_word(aux, STRING(b))
+                add_word(aux, STRING(c))
+                
+                let second = modernhal_do_reply(input: string)
+                print(second)
+                
+                return first == second
             }
-        
+        }
     }
     
     func testPerformanceExample() {

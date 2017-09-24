@@ -435,7 +435,7 @@ func modernhal_make_keywords(model: Model, words: HalDictionary) -> HalDictionar
         for word in words {
             let swaps = swp.pointee[word]
             let toAdd = swaps.isEmpty ? [word] : swaps
-            toAdd.forEach { add_aux(model.wrap, keys.wrap, $0) }
+            toAdd.forEach { modernhal_add_aux(model: model, keys: keys, word: $0) }
         }
     }
     
@@ -456,6 +456,22 @@ func modernhal_add_key(model: Model, keys: HalDictionary, word: STRING) {
     }
     
     if Int(find_word(aux, word)) != 0 {
+        return
+    }
+    
+    add_word(keys.wrap, word)
+}
+
+func modernhal_add_aux(model: Model, keys: HalDictionary, word: STRING) {
+    if model.symbol(for: word) == 0 {
+        return
+    }
+    
+    if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
+        return
+    }
+    
+    if Int(find_word(aux, word)) == 0 {
         return
     }
     
