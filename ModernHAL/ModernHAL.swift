@@ -69,7 +69,7 @@ class Model {
     }
 }
 
-class HalDictionary {
+class HalDictionary : Sequence {
     let wrap : UnsafeMutablePointer<DICTIONARY>
     
     init(wrapping model: UnsafeMutablePointer<DICTIONARY>) {
@@ -78,6 +78,21 @@ class HalDictionary {
     
     func find(word: STRING) -> Int {
         return Int(find_word(wrap, word))
+    }
+    
+    func makeIterator() -> AnyIterator<STRING> {
+        var cur = 0
+        let size = Int(self.wrap.pointee.size)
+        
+        return AnyIterator({
+            if cur == size {
+                return nil
+            }
+            else {
+                defer { cur += 1 }
+                return self.wrap.pointee.entry.advanced(by: cur).pointee
+            }
+        })
     }
 }
 
@@ -253,24 +268,21 @@ func modernhal_reply(model: Model,
 
 func modernhal_evaluate_reply(model: Model,
                               keys k:  UnsafeMutablePointer<DICTIONARY>,
-                              words: UnsafeMutablePointer<DICTIONARY>)
+                              words w: UnsafeMutablePointer<DICTIONARY>)
     -> Float32
-{
-    if words.pointee.size <= 0 {
-        return 0
-    }
-    
+{    
     var num = 0
     var entropy : Float32 = 0
     
-    let keys = HalDictionary(wrapping: k)
+    let keys  = HalDictionary(wrapping: k)
+    let words = HalDictionary(wrapping: w)
     
     model.initializeForward()
     
-    for i in 0 ..< Int(words.pointee.size) {
-        let symbol = model.symbol(for: words.pointee.entry.advanced(by: i).pointee)
+    for word in words {
+        let symbol = model.symbol(for: word)
         
-        if keys.find(word: words.pointee.entry.advanced(by: i).pointee) != 0 {
+        if keys.find(word: word) != 0 {
             var probability : Float32 = 0
             var count       : Int = 0
             
@@ -293,10 +305,10 @@ func modernhal_evaluate_reply(model: Model,
     
     model.initializeBackward()
     
-    for i in (0 ..< Int(words.pointee.size)).reversed() {
-        let symbol = model.symbol(for: words.pointee.entry.advanced(by: i).pointee)
+    for word in words.lazy.reversed() {
+        let symbol = model.symbol(for: word)
         
-        if keys.find(word:  words.pointee.entry.advanced(by: i).pointee) != 0 {
+        if keys.find(word: word) != 0 {
             var probability : Float = 0
             var count       : Float = 0
             
