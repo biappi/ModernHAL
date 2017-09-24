@@ -149,12 +149,12 @@ func modernhal_generate_reply(model: Model,
                               words: UnsafeMutablePointer<DICTIONARY>) -> String
 {
     var output   = "I don't know enough to answer you yet!"
-    let keywords = make_keywords(model.wrap, words)
+    let keywords = HalDictionary(wrapping: make_keywords(model.wrap, words))
     
-    var replywords = modernhal_reply(model: model, keys: dummy)
+    var replywords = HalDictionary(wrapping: modernhal_reply(model: model, keys: dummy))
     
-    if dissimilar(words, replywords) {
-        let string = make_output(replywords)!
+    if dissimilar(words, replywords.wrap) {
+        let string = make_output(replywords.wrap)!
         output = String(cString: string)
     }
     
@@ -162,15 +162,17 @@ func modernhal_generate_reply(model: Model,
     var maxSurprise : Float32 = -10.0
     
     for _ in 0 ..< 10 {
-        replywords = modernhal_reply(model: model, keys: keywords!)
-        let surprise = modernhal_evaluate_reply(model: model, keys: keywords!, words: replywords)
+        replywords = HalDictionary(wrapping: modernhal_reply(model: model, keys: keywords.wrap))
+        let surprise = modernhal_evaluate_reply(model: model,
+                                                keys: keywords,
+                                                words: replywords)
         
         count += 1
         
-        if surprise > maxSurprise && dissimilar(words, replywords) {
+        if surprise > maxSurprise && dissimilar(words, replywords.wrap) {
             maxSurprise = surprise
             
-            let string = make_output(replywords)!
+            let string = make_output(replywords.wrap)!
             output = String(cString: string)
         }
     }
@@ -267,15 +269,12 @@ func modernhal_reply(model: Model,
 }
 
 func modernhal_evaluate_reply(model: Model,
-                              keys k:  UnsafeMutablePointer<DICTIONARY>,
-                              words w: UnsafeMutablePointer<DICTIONARY>)
+                              keys:  HalDictionary,
+                              words: HalDictionary)
     -> Float32
-{    
+{
     var num = 0
     var entropy : Float32 = 0
-    
-    let keys  = HalDictionary(wrapping: k)
-    let words = HalDictionary(wrapping: w)
     
     model.initializeForward()
     
