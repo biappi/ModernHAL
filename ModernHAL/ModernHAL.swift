@@ -69,13 +69,13 @@ class Model {
     }
 }
 
-class HalDictionary : Sequence {
+class Keywords : Sequence {
     let wrap : UnsafeMutablePointer<DICTIONARY>
     
     var size : Int { return Int(wrap.pointee.size) }
     
-    static func new() -> HalDictionary {
-        return HalDictionary(wrapping: new_dictionary()!)
+    init() {
+        wrap = new_dictionary()!
     }
     
     init(wrapping model: UnsafeMutablePointer<DICTIONARY>) {
@@ -143,6 +143,10 @@ class HalDictionary : Sequence {
     }
 }
 
+class HalDictionary : Keywords {
+    
+}
+
 extension SWAP : Collection {
     public var startIndex : Int { return 0 }
     public var endIndex   : Int { return Int(size) }
@@ -206,7 +210,7 @@ func modernhal_learn(model: Model, words: HalDictionary)
     }
 }
 
-let dummy = HalDictionary.new()
+let dummy = HalDictionary()
 func modernhal_generate_reply(model: Model,
                               words: HalDictionary) -> String
 {
@@ -242,9 +246,9 @@ func modernhal_generate_reply(model: Model,
     return output
 }
 
-let replies = HalDictionary.new()
+let replies = HalDictionary()
 func modernhal_reply(model: Model,
-                     keys:  HalDictionary)
+                     keys:  Keywords)
     -> HalDictionary
 {
     replies.clear()
@@ -299,7 +303,7 @@ func modernhal_reply(model: Model,
 }
 
 func modernhal_evaluate_reply(model: Model,
-                              keys:  HalDictionary,
+                              keys:  Keywords,
                               words: HalDictionary)
     -> Float32
 {
@@ -420,8 +424,8 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary:
     }
 }
 
-let keys = HalDictionary.new()
-func modernhal_make_keywords(model: Model, words: HalDictionary) -> HalDictionary {
+let keys = Keywords()
+func modernhal_make_keywords(model: Model, words: HalDictionary) -> Keywords {
     keys.forEach { $0.word.deallocate(capacity: 1) }
     keys.clear()
     
@@ -442,7 +446,7 @@ func modernhal_make_keywords(model: Model, words: HalDictionary) -> HalDictionar
     return keys
 }
 
-func modernhal_add_key(model: Model, keys: HalDictionary, word: STRING) {
+func modernhal_add_key(model: Model, keys: Keywords, word: STRING) {
     if model.symbol(for: word) == 0 {
         return
     }
@@ -462,7 +466,7 @@ func modernhal_add_key(model: Model, keys: HalDictionary, word: STRING) {
     add_word(keys.wrap, word)
 }
 
-func modernhal_add_aux(model: Model, keys: HalDictionary, word: STRING) {
+func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
     if model.symbol(for: word) == 0 {
         return
     }
