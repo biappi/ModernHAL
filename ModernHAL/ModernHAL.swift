@@ -139,13 +139,15 @@ class HalDictionary : Sequence {
 
 func modernhal_do_reply(input: String) -> String {
     let globalModel = Model(wrapping: model)
+    let globalWords = HalDictionary(wrapping: words)
     
     return input.uppercased().withCString {
-        make_words(UnsafeMutablePointer(mutating: $0), words)
+        make_words(UnsafeMutablePointer(mutating: $0), globalWords.wrap)
         
-        modernhal_learn(model: globalModel, words: words)
+        modernhal_learn(model: globalModel, words: globalWords)
         
-        let output = modernhal_generate_reply(model: globalModel, words: words)
+        let output = modernhal_generate_reply(model: globalModel,
+                                              words: globalWords)
         
         var outputData = output.data(using: .utf8)
         outputData?.append(0)
@@ -155,32 +157,23 @@ func modernhal_do_reply(input: String) -> String {
     }
 }
 
-func modernhal_learn(model: Model,
-                     words: UnsafeMutablePointer<DICTIONARY>)
+func modernhal_learn(model: Model, words: HalDictionary)
 {
-    if words.pointee.size <= model.order {
+    if words.size <= model.order {
         return
     }
     
     do {
         // Forward training
         model.initializeForward()
-        
-        for i in 0 ..< words.pointee.size {
-            model.updateModel(word: words.pointee.entry.advanced(by: Int(i)).pointee)
-        }
-        
+        words.forEach { model.updateModel(word: $0) }
         model.updateModel(symbol: 1)
     }
     
     do {
         // Backwards training
         model.initializeBackward()
-        
-        for i in (0 ..< words.pointee.size).reversed() {
-            model.updateModel(word: words.pointee.entry.advanced(by: Int(i)).pointee)
-        }
-        
+        words.lazy.reversed().forEach { model.updateModel(word: $0) }
         model.updateModel(symbol: 1)
     }
 }
