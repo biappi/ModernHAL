@@ -10,7 +10,9 @@ import Foundation
 
 class Model {
     let wrap : UnsafeMutablePointer<MODEL>
-        
+    
+    var order : Int { return Int(wrap.pointee.order) }
+    
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
         wrap = model
     }
@@ -27,6 +29,15 @@ class Model {
     
     func symbol(for word: STRING) -> Int {
         return Int(find_word(wrap.pointee.dictionary, word))
+    }
+    
+    func word(for symbol: Int) -> STRING {
+        return wrap.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee
+    }
+    
+    func updateContext(word: STRING) {
+        let symbol = Int(find_word(wrap.pointee.dictionary, word))
+        updateContext(symbol: symbol)
     }
     
     func updateContext(symbol: Int) {
@@ -134,13 +145,16 @@ func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
 }
 
 let replies = new_dictionary()!
-func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
+func modernhal_reply(model m: UnsafeMutablePointer<MODEL>,
                      keys:  UnsafeMutablePointer<DICTIONARY>)
     -> UnsafeMutablePointer<DICTIONARY>
 {
+    
     free_dictionary(replies)
     
-    Model(wrapping: model).initializeForward()
+    let model = Model(wrapping: m)
+        
+    model.initializeForward()
     
     used_key = false
     
@@ -149,10 +163,10 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
     
     while true {
         if start {
-            symbol = seed(model, keys)
+            symbol = seed(model.wrap, keys)
         }
         else {
-            symbol = babble(model, keys, replies)
+            symbol = babble(model.wrap, keys, replies)
         }
         
         if symbol == 0 || symbol == 1 {
@@ -169,29 +183,25 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
             replies.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
         }
         
-        replies.pointee.entry.advanced(by: Int(replies.pointee.size)).pointee.length
-            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.length
-        replies.pointee.entry.advanced(by: Int(replies.pointee.size)).pointee.word
-            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.word
+        replies.pointee.entry.advanced(by: Int(replies.pointee.size)).pointee
+            = model.word(for: Int(symbol))
         
         replies.pointee.size += 1
         
-        update_context(model, symbol)
+        model.updateContext(symbol: Int(symbol))
     }
     
-    Model(wrapping: model).initializeBackward()
+    model.initializeBackward()
     
     if replies.pointee.size > 0 {
-        let size = min(Int(replies.pointee.size), Int(model.pointee.order))
+        let size = min(Int(replies.pointee.size), Int(model.order))
         for i in (0 ..< size).reversed() {
-            let symbol = find_word(model.pointee.dictionary,
-                                   replies.pointee.entry.advanced(by: i).pointee)
-            update_context(model, Int32(symbol))
+            model.updateContext(word: replies.pointee.entry.advanced(by: i).pointee)
         }
     }
     
     while true {
-        symbol = babble(model, keys, replies)
+        symbol = babble(model.wrap, keys, replies)
         
         if symbol == 0 || symbol == 1 {
             break
@@ -213,15 +223,12 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
                 = replies.pointee.entry.advanced(by: Int(i - 1)).pointee.word
         }
         
-        replies.pointee.entry.advanced(by: 0).pointee.length
-            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.length
-        
-        replies.pointee.entry.advanced(by: 0).pointee.word
-            = model.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee.word
+        replies.pointee.entry.advanced(by: 0).pointee
+            = model.word(for: Int(symbol))
         
         replies.pointee.size += 1
         
-        update_context(model, symbol)
+        model.updateContext(symbol: Int(symbol))
     }
     
     return replies
