@@ -187,14 +187,14 @@ func modernhal_learn(model: Model,
 
 let dummy = HalDictionary.new()
 func modernhal_generate_reply(model: Model,
-                              words: UnsafeMutablePointer<DICTIONARY>) -> String
+                              words: HalDictionary) -> String
 {
     var output   = "I don't know enough to answer you yet!"
-    let keywords = HalDictionary(wrapping: make_keywords(model.wrap, words))
+    let keywords = HalDictionary(wrapping: make_keywords(model.wrap, words.wrap))
     
     var replywords = modernhal_reply(model: model, keys: dummy)
     
-    if dissimilar(words, replywords.wrap) {
+    if dissimilar(words.wrap, replywords.wrap) {
         let string = make_output(replywords.wrap)!
         output = String(cString: string)
     }
@@ -210,7 +210,7 @@ func modernhal_generate_reply(model: Model,
         
         count += 1
         
-        if surprise > maxSurprise && dissimilar(words, replywords.wrap) {
+        if surprise > maxSurprise && dissimilar(words.wrap, replywords.wrap) {
             maxSurprise = surprise
             
             let string = make_output(replywords.wrap)!
