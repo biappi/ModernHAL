@@ -103,7 +103,6 @@ func modernhal_learn(model m: UnsafeMutablePointer<MODEL>,
         }
         
         model.updateModel(symbol: 1)
-        
     }
     
     do {
