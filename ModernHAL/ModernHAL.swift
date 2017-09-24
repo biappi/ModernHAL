@@ -189,7 +189,7 @@ func modernhal_generate_reply(model: Model,
                               words: HalDictionary) -> String
 {
     var output   = "I don't know enough to answer you yet!"
-    let keywords = HalDictionary(wrapping: make_keywords(model.wrap, words.wrap))
+    let keywords = modernhal_make_keywords(model: model, words: words)
     
     var replywords = modernhal_reply(model: model, keys: dummy)
     
@@ -396,4 +396,45 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary:
             lastChar.pointee = dot.word.advanced(by: 0).pointee
         }
     }
+}
+
+let keys = HalDictionary.new()
+func modernhal_make_keywords(model: Model, words: HalDictionary) -> HalDictionary {
+    keys.forEach { $0.word.deallocate(capacity: 1) }
+    keys.clear()
+    
+    for word in words {
+        var c = 0
+        
+        for j in 0 ..< Int(swp.pointee.size) {
+            if wordcmp(swp.pointee.from.advanced(by: j).pointee, word) == 0
+            {
+                add_key(model.wrap, keys.wrap, swp.pointee.to.advanced(by: j).pointee)
+                c += 1
+            }
+        }
+        
+        if c == 0 {
+            add_key(model.wrap, keys.wrap, word)
+        }
+    }
+    
+    if keys.size > 0 {
+        for word in words {
+            var c = 0
+            
+            for j in 0 ..< Int(swp.pointee.size) {
+                if wordcmp(swp.pointee.from.advanced(by: j).pointee, word) == 0 {
+                    add_aux(model.wrap, keys.wrap, swp.pointee.to.advanced(by: j).pointee)
+                    c += 1
+                }
+            }
+            
+            if c == 0 {
+                add_aux(model.wrap, keys.wrap, word)
+            }
+        }
+    }
+    
+    return keys
 }
