@@ -85,11 +85,11 @@ func modernhal_generate_reply(model: UnsafeMutablePointer<MODEL>,
     }
     
     var count = 0
-    var maxSurprise : Float = -10.0
+    var maxSurprise : Float32 = -10.0
     
     for _ in 0 ..< 10 {
         replywords = modernhal_reply(model: model, keys: keywords!)
-        let surprise = evaluate_reply(model, keywords, replywords)
+        let surprise = modernhal_evaluate_reply(model: model, keys: keywords!, words: replywords!)
         
         count += 1
         
@@ -196,5 +196,83 @@ func modernhal_reply(model: UnsafeMutablePointer<MODEL>,
     }
     
     return replies
+}
+
+func modernhal_evaluate_reply(model: UnsafeMutablePointer<MODEL>,
+                              keys:  UnsafeMutablePointer<DICTIONARY>,
+                              words: UnsafeMutablePointer<DICTIONARY>)
+    -> Float32
+{
+    if words.pointee.size <= 0 {
+        return 0
+    }
+    
+    var num = 0
+    var entropy : Float32 = 0
+    
+    model.pointee.initializeForward()
+    
+    for i in 0 ..< Int(words.pointee.size) {
+        let symbol = find_word(model.pointee.dictionary, words.pointee.entry.advanced(by: i).pointee)
+        
+        if find_word(keys, words.pointee.entry.advanced(by: i).pointee) != 0 {
+            var probability : Float32 = 0
+            var count       : Int = 0
+            
+            num += 1
+            
+            for j in 0 ..< Int(model.pointee.order) {
+                if let context = model.pointee.context.advanced(by: j).pointee {
+                    let node = find_symbol(context, Int32(symbol))
+                    probability += Float32(node!.pointee.count) / Float32(context.pointee.usage)
+                    count += 1
+                }
+            }
+            
+            if count > 0 {
+                entropy -= Float32(log(Double(probability / Float32(count))))
+            }
+        }
+        
+        update_context(model, Int32(symbol))
+    }
+    
+    
+    initialize_context(model)
+    model.pointee.context.advanced(by: 0).pointee = model.pointee.backward
+    
+    for i in (0 ..< Int(words.pointee.size)).reversed() {
+        let symbol = find_word(model.pointee.dictionary, words.pointee.entry.advanced(by: i).pointee)
+        
+        if find_word(keys, words.pointee.entry.advanced(by: i).pointee) != 0 {
+            var probability : Float = 0
+            var count       : Float = 0
+            
+            num += 1
+            
+            for j in 0 ..< Int(model.pointee.order) {
+                if let context = model.pointee.context.advanced(by: j).pointee {
+                    let node = find_symbol(context, Int32(symbol))
+                    probability += Float(node!.pointee.count) / Float(context.pointee.usage)
+                    count += 1
+                }
+            }
+            
+            if count > 0 {
+                entropy -= Float32(log(Double(probability / Float32(count))))
+            }
+        }
+        update_context(model, Int32(symbol))
+    }
+    
+    if num >= 8 {
+        entropy /= Float32(sqrt(Double(num - 1)))
+    }
+    
+    if num >= 16 {
+        entropy /= Float32(num)
+    }
+
+    return entropy
 }
 
