@@ -143,9 +143,6 @@ class Keywords : Sequence {
     }
 }
 
-class HalDictionary : Keywords {
-    
-}
 
 extension SWAP : Collection {
     public var startIndex : Int { return 0 }
@@ -169,17 +166,27 @@ extension SWAP : Collection {
     }
 }
 
+extension STRING : Equatable { }
+
+public func ==(lhs: STRING, rhs: STRING) -> Bool {
+    return wordcmp(lhs, rhs) == 0
+}
+
+extension STRING {
+    func toString() -> String {
+        let data = Data(bytes: self.word, count: Int(self.length))
+        return String(data: data, encoding: .utf8)!
+    }
+}
 func modernhal_do_reply(input: String) -> String {
     let globalModel = Model(wrapping: model)
-    let globalWords = HalDictionary(wrapping: words)
     
     return input.uppercased().withCString {
-        modernhal_make_words(from: UnsafeMutablePointer(mutating: $0), in: globalWords)
+        let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
         
-        modernhal_learn(model: globalModel, words: globalWords)
+        modernhal_learn(model: globalModel, words: words)
         
-        let output = modernhal_generate_reply(model: globalModel,
-                                              words: globalWords)
+        let output = modernhal_generate_reply(model: globalModel, words: words)
         
         var outputData = output.data(using: .utf8)
         outputData?.append(0)
@@ -189,9 +196,9 @@ func modernhal_do_reply(input: String) -> String {
     }
 }
 
-func modernhal_learn(model: Model, words: HalDictionary)
+func modernhal_learn(model: Model, words: [STRING])
 {
-    if words.size <= model.order {
+    if words.count <= model.order {
         return
     }
     
@@ -210,18 +217,18 @@ func modernhal_learn(model: Model, words: HalDictionary)
     }
 }
 
-let dummy = HalDictionary()
+let dummy = Keywords()
 func modernhal_generate_reply(model: Model,
-                              words: HalDictionary) -> String
+                              words: [STRING]) -> String
 {
     var output   = "I don't know enough to answer you yet!"
     let keywords = modernhal_make_keywords(model: model, words: words)
     
     var replywords = modernhal_reply(model: model, keys: dummy)
     
-    if dissimilar(words.wrap, replywords.wrap) {
-        let string = make_output(replywords.wrap)!
-        output = String(cString: string)
+    
+    if words != replywords {
+        output = replywords.map { $0.toString() }.joined()
     }
     
     var count = 0
@@ -235,23 +242,18 @@ func modernhal_generate_reply(model: Model,
         
         count += 1
         
-        if surprise > maxSurprise && dissimilar(words.wrap, replywords.wrap) {
+        if surprise > maxSurprise && (words != replywords) {
             maxSurprise = surprise
-            
-            let string = make_output(replywords.wrap)!
-            output = String(cString: string)
+            output = replywords.map { $0.toString() }.joined()
         }
     }
     
-    return output
+    return output == "" ? "I am utterly speechless!" : output
 }
 
-let replies = HalDictionary()
-func modernhal_reply(model: Model,
-                     keys:  Keywords)
-    -> HalDictionary
+func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
 {
-    replies.clear()
+    var replies = [STRING]()
     
     model.initializeForward()
     
@@ -274,7 +276,7 @@ func modernhal_reply(model: Model,
         
         start = false
         
-        replies.append(word: model.word(for: Int(symbol)))
+        replies.append(model.word(for: Int(symbol)))
         
         model.updateContext(symbol: Int(symbol))
     }
@@ -282,7 +284,7 @@ func modernhal_reply(model: Model,
     model.initializeBackward()
     
     replies.lazy
-        .prefix(min(replies.size, model.order))
+        .prefix(min(replies.count, model.order))
         .reversed()
         .forEach {
             model.updateContext(word: $0)
@@ -295,7 +297,7 @@ func modernhal_reply(model: Model,
             break
         }
         
-        replies.prepend(word: model.word(for: Int(symbol)))
+        replies.insert(model.word(for: Int(symbol)), at: 0)
         model.updateContext(symbol: Int(symbol))
     }
     
@@ -304,7 +306,7 @@ func modernhal_reply(model: Model,
 
 func modernhal_evaluate_reply(model: Model,
                               keys:  Keywords,
-                              words: HalDictionary)
+                              words: [STRING])
     -> Float32
 {
     var num = 0
@@ -381,11 +383,11 @@ var dot : STRING = {
     return STRING(length: UInt8(d.count), word: p)
 }()
 
-func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary: HalDictionary) {
-    dictionary.clear()
+func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
+    var dictionary = [STRING]()
     
     if strlen(input) == 0 {
-        return
+        return dictionary
     }
     
     var input  = input
@@ -393,7 +395,7 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary:
     
     while true {
         if boundary(input, Int32(offset)) {
-            dictionary.append(word: STRING(length: UInt8(offset), word: input))
+            dictionary.append(STRING(length: UInt8(offset), word: input))
             
             if offset == strlen(input) {
                 break
@@ -409,7 +411,7 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary:
     
     let last = dictionary.last!
     if isalnum(Int32(last.word.advanced(by: 0).pointee)) != 0 {
-        dictionary.append(word: dot)
+        dictionary.append(dot)
     }
     else {
         let lastChar = last.word.advanced(by: Int(last.length) - 1)
@@ -422,10 +424,12 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>, in dictionary:
             lastChar.pointee = dot.word.advanced(by: 0).pointee
         }
     }
+    
+    return dictionary
 }
 
 let keys = Keywords()
-func modernhal_make_keywords(model: Model, words: HalDictionary) -> Keywords {
+func modernhal_make_keywords(model: Model, words: [STRING]) -> Keywords {
     keys.forEach { $0.word.deallocate(capacity: 1) }
     keys.clear()
     
@@ -482,7 +486,7 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
     add_word(keys.wrap, word)
 }
 
-func modernhal_babble(model: Model, keys: Keywords, words: HalDictionary) -> Int32 {
+func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
     guard let node = modernhal_longest_available_context(model.wrap) else {
         return 0
     }
@@ -501,7 +505,7 @@ func modernhal_babble(model: Model, keys: Keywords, words: HalDictionary) -> Int
         
         if ((find_word(keys.wrap, model.word(for: symbol)) != 0) &&
             ((used_key == true) || (find_word(aux, model.word(for: symbol)) == 0)) &&
-            (word_exists(words.wrap, model.word(for: symbol)) == false))
+            (words.contains(model.word(for: symbol)) == false))
         {
             used_key = true
             break;
