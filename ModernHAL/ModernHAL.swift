@@ -95,6 +95,10 @@ class Keywords {
         
         free_dictionary(wrap)
     }
+    
+    subscript(i: Int) -> STRING {
+        return self.wrap.pointee.entry.advanced(by: i).pointee
+    }
 }
 
 
@@ -218,7 +222,7 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
     
     while true {
         if start {
-            symbol = seed(model.wrap, keys.wrap)
+            symbol = modernhal_seed(model: model, keys: keys)
         }
         else {
             symbol = modernhal_babble(model: model, keys: keys, words: replies)
@@ -471,3 +475,57 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
     
     return Int32(symbol)
 }
+
+func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
+    var symbol = 0
+    
+    if model.wrap.pointee.context.advanced(by: 0).pointee?.pointee.branch == 0 {
+        symbol = 0
+    }
+    else {
+        symbol = Int(model
+            .wrap
+            .pointee
+            .context
+            .advanced(by: 0)
+            .pointee!
+            .pointee
+            .tree
+            .advanced(by: Int(rnd(Int32(model
+                .wrap
+                .pointee
+                .context
+                .advanced(by: 0)
+                .pointee!
+                .pointee
+                .branch))))
+            .pointee!
+            .pointee
+            .symbol)
+    }
+    
+    if keys.size > 0 {
+        var i = Int(rnd(Int32(keys.size)))
+        let stop = i
+        
+        while true {
+            if (model.symbol(for: keys[i]) != 0) && (find_word(aux, keys[i]) == 0)
+            {
+                return Int32(model.symbol(for: keys[i]))
+            }
+            
+            i += 1
+            
+            if i == keys.size {
+                i = 0
+            }
+            
+            if i == stop {
+                return Int32(symbol)
+            }
+        }
+    }
+    
+    return Int32(symbol)
+}
+
