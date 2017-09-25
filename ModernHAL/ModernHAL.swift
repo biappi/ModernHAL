@@ -46,7 +46,7 @@ class Model {
     
     func updateModel(word: STRING) {
         let symbol = Int(add_word(wrap.pointee.dictionary, word))
-        update_model(wrap, Int32(symbol))
+        updateModel(symbol: symbol)
     }
     
     func updateModel(symbol: Int) {
