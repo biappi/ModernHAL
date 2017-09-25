@@ -13,26 +13,38 @@ class Model {
     
     var order : Int { return Int(wrap.pointee.order) }
     
+    private var dictionary : Keywords { return Keywords(wrapping: wrap.pointee.dictionary) }
+    
+    private var forward : Tree? {
+        let x = wrap.pointee.forward
+        return x.map { Tree(wrapping: $0) }
+    }
+    
+    private var backward : Tree? {
+        let x = wrap.pointee.backward
+        return x.map { Tree(wrapping: $0) }
+    }
+    
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
         wrap = model
     }
     
     func initializeForward() {
         initialize_context(wrap)
-        wrap.pointee.context.advanced(by: 0).pointee = wrap.pointee.forward
+        context[0] = forward
     }
     
     func initializeBackward() {
         initialize_context(wrap)
-        wrap.pointee.context.advanced(by: 0).pointee = wrap.pointee.backward
+        context[0] = backward
     }
     
     func symbol(for word: STRING) -> Int {
-        return Int(find_word(wrap.pointee.dictionary, word))
+        return dictionary.find(word: word)
     }
     
     func word(for symbol: Int) -> STRING {
-        return wrap.pointee.dictionary.pointee.entry.advanced(by: Int(symbol)).pointee
+        return dictionary[Int(symbol)]
     }
     
     func updateContext(word: STRING) {
@@ -43,7 +55,7 @@ class Model {
     func updateContext(symbol: Int) {
         for i in (1 ..< order + 2).reversed() {
             if context[i - 1] != nil {
-                context[i] = Tree(wrapping: find_symbol(context[i - 1]?.wrap, Int32(symbol)))
+                context[i] = context[i - 1]?.find(symbol: symbol)
             }
         }
     }
@@ -56,7 +68,7 @@ class Model {
     func updateModel(symbol: Int) {
         for i in (1 ..< order + 2).reversed() {
             if context[i - 1] != nil {
-                context[i] = Tree(wrapping: add_symbol(context[i - 1]?.wrap, UInt16(symbol)))
+                context[i] = context[i - 1]?.add(symbol:symbol)
             }
         }
     }
@@ -108,7 +120,11 @@ class Keywords {
         wrap = new_dictionary()!
     }
     
-    func add(word: STRING){
+    init(wrapping: UnsafeMutablePointer<DICTIONARY>) {
+        wrap = wrapping
+    }
+    
+    func add(word: STRING) {
         add_word(wrap, word)
     }
     
@@ -184,6 +200,10 @@ class Tree {
         return Tree(wrapping: find_symbol(wrap, Int32(symbol)))
     }
     
+    func add(symbol: Int) -> Tree {
+        return Tree(wrapping: add_symbol(wrap, UInt16(symbol)))
+    }
+    
     class Trees : Collection {
         let wrap : UnsafeMutablePointer<TREE>
         
@@ -192,8 +212,8 @@ class Tree {
         
         public func index(after i: Int) -> Int { return i + 1 }
         
-        subscript(i: Int) -> Tree? {
-            return wrap.pointee.tree.advanced(by: i).pointee.map { Tree(wrapping: $0) }
+        subscript(i: Int) -> Tree {
+            return wrap.pointee.tree.advanced(by: i).pointee.map { Tree(wrapping: $0) }!
         }
         
         init(wrapping: UnsafeMutablePointer<TREE>) {
@@ -524,7 +544,7 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
     var symbol : Int = 0
     
     while count >= 0 {
-        symbol = Int(node.tree[i]!.symbol)
+        symbol = Int(node.tree[i].symbol)
         
         if ((keys.find(word: model.word(for: symbol)) != 0) &&
             ((used_key == true) || (find_word(aux, model.word(for: symbol)) == 0)) &&
@@ -534,7 +554,8 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
             break;
         }
         
-        count -= Int(node.tree[i]!.wrap.pointee.count)
+
+        count -= node.tree[i].count
         
         i = (i >= (node.branch - 1)) ? 0 : i + 1
     }
@@ -550,7 +571,7 @@ func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
     }
     else {
         symbol = Int(model.context[0]!
-            .tree[ Int(rnd(Int32(model.context[0]!.branch))) ]!
+            .tree[ Int(rnd(Int32(model.context[0]!.branch))) ]
             .symbol)
     }
     
