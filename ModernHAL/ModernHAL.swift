@@ -207,20 +207,33 @@ class Tree {
     var tree   : Trees { return Trees(wrapping: wrap)    }
     
     func find(symbol: Int) -> Tree? {
-        return search(symbol: symbol).map { tree[$0] }
+        let (pos, found) = search(symbol: symbol)
+        return found ? tree[pos] : nil
     }
     
     func add(symbol: Int) -> Tree {
-        let node = find_symbol_add(wrap, Int32(symbol))!
+        let (pos, found) = search(symbol: symbol)
+        let node : UnsafeMutablePointer<TREE>
+        
+        if found {
+            node = tree[pos].wrap
+        }
+        else {
+            node = new_node()
+            node.pointee.symbol = UInt16(symbol)
+            add_node(self.wrap, node, Int32(pos))
+        }
+        
         node.pointee.count += 1
         wrap.pointee.usage += 1
+        
         return Tree(wrapping: node)
     }
     
     
-    private func search(symbol: Int) -> Int? {
+    private func search(symbol: Int) -> (pos: Int, found: Bool) {
         if tree.count == 0 {
-            return nil
+            return (0, false)
         }
         
         var min    = 0
@@ -232,14 +245,14 @@ class Tree {
             let compar = symbol - tree[middle].symbol
             
             if compar == 0 {
-                return middle
+                return (middle, true)
             }
             else if compar > 0 {
-                if max == middle { _ = middle + 1 ; return nil }
+                if max == middle { return (middle + 1, false)  }
                 min = middle + 1
             }
             else if compar < 0 {
-                if min == middle { _ = middle ; return nil }
+                if min == middle { return (middle, false) }
                 max = middle - 1
             }
         }
