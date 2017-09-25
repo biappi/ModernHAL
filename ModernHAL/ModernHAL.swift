@@ -207,13 +207,39 @@ class Tree {
     var tree   : Trees { return Trees(wrapping: wrap)    }
     
     func find(symbol: Int) -> Tree? {
-        var found = false
-        let position = Int(search_node(wrap, Int32(symbol), &found))
-        return found ? tree[position] : nil
+        return search(symbol: symbol).map { tree[$0] }
     }
     
     func add(symbol: Int) -> Tree {
         return Tree(wrapping: add_symbol(wrap, UInt16(symbol)))
+    }
+    
+    
+    private func search(symbol: Int) -> Int? {
+        if tree.count == 0 {
+            return nil
+        }
+        
+        var min    = 0
+        var max    = tree.count - 1
+        var middle = (min + max) / 2
+        
+        while true {
+            middle = (min + max) / 2
+            let compar = symbol - tree[middle].symbol
+            
+            if compar == 0 {
+                return middle
+            }
+            else if compar > 0 {
+                if max == middle { _ = middle + 1 ; return nil }
+                min = middle + 1
+            }
+            else if compar < 0 {
+                if min == middle { _ = middle ; return nil }
+                max = middle - 1
+            }
+        }
     }
     
     class Trees : Collection {
