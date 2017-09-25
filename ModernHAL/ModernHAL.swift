@@ -53,6 +53,10 @@ class Model {
         update_model(wrap, Int32(symbol))
     }
     
+    func longestAvailableContext() -> Tree? {
+        return Tree(wrapping: modernhal_longest_available_context(wrap))
+    }
+    
     var context: Contexts { return Contexts(wrapping: wrap) }
     
     class Contexts : Collection {
@@ -63,8 +67,8 @@ class Model {
         
         public func index(after i: Int) -> Int { return i + 1 }
         
-        subscript(i: Int) -> UnsafeMutablePointer<TREE>? {
-            return self.wrap.pointee.context.advanced(by: i).pointee
+        subscript(i: Int) -> Tree? {
+            return wrap.pointee.context.advanced(by: i).pointee.map { Tree(wrapping: $0) }
         }
         
         init(wrapping: UnsafeMutablePointer<MODEL>) {
@@ -140,6 +144,37 @@ extension STRING {
         return String(data: data, encoding: .utf8)!
     }
 }
+
+class Tree {
+    let wrap: UnsafeMutablePointer<TREE>
+    
+    init(wrapping: UnsafeMutablePointer<TREE>) {
+        wrap = wrapping
+    }
+    
+    var symbol : Int   { return Int(wrap.pointee.symbol) }
+    var usage  : Int   { return Int(wrap.pointee.usage)  }
+    var branch : Int   { return Int(wrap.pointee.branch) }
+    var tree   : Trees { return Trees(wrapping: wrap)    }
+    
+    class Trees : Collection {
+        let wrap : UnsafeMutablePointer<TREE>
+        
+        public var startIndex : Int { return 0 }
+        public var endIndex   : Int { return Int(wrap.pointee.branch) }
+        
+        public func index(after i: Int) -> Int { return i + 1 }
+        
+        subscript(i: Int) -> Tree? {
+            return wrap.pointee.tree.advanced(by: i).pointee.map { Tree(wrapping: $0) }
+        }
+        
+        init(wrapping: UnsafeMutablePointer<TREE>) {
+            wrap = wrapping
+        }
+    }
+}
+
 func modernhal_do_reply(input: String) -> String {
     let globalModel = Model(wrapping: model)
     
@@ -286,8 +321,8 @@ func modernhal_evaluate_reply(model: Model,
             num += 1
             
             for context in model.context.flatMap({ $0 }) {
-                let node = find_symbol(context, Int32(symbol))
-                probability += Float32(node!.pointee.count) / Float32(context.pointee.usage)
+                let node = find_symbol(context.wrap, Int32(symbol))
+                probability += Float32(node!.pointee.count) / Float32(context.usage)
                 count += 1
             }
             
@@ -312,8 +347,8 @@ func modernhal_evaluate_reply(model: Model,
             num += 1
             
             for context in model.context.flatMap({ $0 }) {
-                let node = find_symbol(context, Int32(symbol))
-                probability += Float32(node!.pointee.count) / Float32(context.pointee.usage)
+                let node = find_symbol(context.wrap, Int32(symbol))
+                probability += Float32(node!.pointee.count) / Float32(context.usage)
                 count += 1
             }
             
@@ -448,21 +483,21 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
 }
 
 func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
-    guard let node = modernhal_longest_available_context(model.wrap) else {
+    guard let node = model.longestAvailableContext() else {
         return 0
     }
     
-    if node.pointee.branch == 0 {
+    if node.branch == 0 {
         return 0
     }
     
-    var i = Int(rnd(Int32(node.pointee.branch)))
-    var count = Int(rnd(Int32(node.pointee.usage)))
+    var i = Int(rnd(Int32(node.branch)))
+    var count = Int(rnd(Int32(node.usage)))
     
     var symbol : Int = 0
     
     while count >= 0 {
-        symbol = Int(node.pointee.tree.advanced(by: i).pointee!.pointee.symbol)
+        symbol = Int(node.tree[i]!.symbol)
         
         if ((keys.find(word: model.word(for: symbol)) != 0) &&
             ((used_key == true) || (find_word(aux, model.word(for: symbol)) == 0)) &&
@@ -472,9 +507,9 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
             break;
         }
         
-        count -= Int(node.pointee.tree.advanced(by: i).pointee!.pointee.count)
+        count -= Int(node.tree[i]!.wrap.pointee.count)
         
-        i = (i >= (node.pointee.branch - 1)) ? 0 : i + 1
+        i = (i >= (node.branch - 1)) ? 0 : i + 1
     }
     
     return Int32(symbol)
@@ -488,14 +523,9 @@ func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
     }
     else {
         symbol = Int(model.context[0]!
-            .pointee
-            .tree
-            .advanced(by: Int(rnd(Int32(model
+            .tree[ Int(rnd(Int32(model
                 .context[0]!
-                .pointee
-                .branch))))
-            .pointee!
-            .pointee
+                .branch)))]!
             .symbol)
     }
     
