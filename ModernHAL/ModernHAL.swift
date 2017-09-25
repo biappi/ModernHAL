@@ -15,28 +15,21 @@ class Model {
     
     private var dictionary : Keywords { return Keywords(wrapping: wrap.pointee.dictionary) }
     
-    private var forward : Tree? {
-        let x = wrap.pointee.forward
-        return x.map { Tree(wrapping: $0) }
-    }
-    
-    private var backward : Tree? {
-        let x = wrap.pointee.backward
-        return x.map { Tree(wrapping: $0) }
-    }
+    private var forward : Tree
+    private var backward : Tree
     
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
         wrap = model
+        forward = Tree(wrapping: wrap.pointee.forward)
+        backward = Tree(wrapping: wrap.pointee.backward)
     }
     
-    func initializeForward() {
-        initialize_context(wrap)
-        context[0] = forward
+    func initializeForward() -> Context {
+        return Context(wrapping: wrap, initial: forward)
     }
     
-    func initializeBackward() {
-        initialize_context(wrap)
-        context[0] = backward
+    func initializeBackward() -> Context {
+        return Context(wrapping: wrap, initial: backward)
     }
     
     func symbol(for word: STRING) -> Int {
@@ -47,53 +40,64 @@ class Model {
         return dictionary[Int(symbol)]
     }
     
-    func updateContext(word: STRING) {
-        let symbol = Int(find_word(wrap.pointee.dictionary, word))
-        updateContext(symbol: symbol)
-    }
-    
-    func updateContext(symbol: Int) {
-        for i in (1 ..< order + 2).reversed() {
-            if context[i - 1] != nil {
-                context[i] = context[i - 1]?.find(symbol: symbol)
-            }
-        }
-    }
-    
-    func updateModel(word: STRING) {
-        let symbol = Int(add_word(wrap.pointee.dictionary, word))
-        updateModel(symbol: symbol)
-    }
-    
-    func updateModel(symbol: Int) {
-        for i in (1 ..< order + 2).reversed() {
-            if context[i - 1] != nil {
-                context[i] = context[i - 1]?.add(symbol:symbol)
-            }
-        }
-    }
-    
-    func longestAvailableContext() -> Tree? {
-        var node : Tree?
+    class Context {
+        private var context: Contexts
+        private let wrap : UnsafeMutablePointer<MODEL>
         
-        for  i in 0 ..< context.count + 1 {
-            if let c = context[i] {
-                node = c
+        internal init(wrapping: UnsafeMutablePointer<MODEL>, initial: Tree) {
+            wrap = wrapping
+            context = Contexts(wrapping: wrapping)
+            
+            initialize_context(wrap)
+            context[0] = initial
+        }
+        
+        func activeContexts() -> [Tree] {
+            return context.flatMap({ $0 })
+        }
+        
+        func updateContext(word: STRING) {
+            let symbol = Int(find_word(wrap.pointee.dictionary, word))
+            updateContext(symbol: symbol)
+        }
+        
+        func updateContext(symbol: Int) {
+            for i in (1 ..< Int(wrap.pointee.order + 2)).reversed() {
+                if context[i - 1] != nil {
+                    context[i] = context[i - 1]?.find(symbol: symbol)
+                }
             }
         }
         
-        return node
+        func updateModel(word: STRING) {
+            let symbol = Int(add_word(wrap.pointee.dictionary, word))
+            updateModel(symbol: symbol)
+        }
+        
+        func updateModel(symbol: Int) {
+            for i in (1 ..< Int(wrap.pointee.order + 2)).reversed() {
+                if context[i - 1] != nil {
+                    context[i] = context[i - 1]?.add(symbol:symbol)
+                }
+            }
+        }
+        
+        func longestAvailableContext() -> Tree? {
+            var node : Tree?
+            
+            for  i in 0 ..< context.count + 1 {
+                if let c = context[i] {
+                    node = c
+                }
+            }
+            
+            return node
+        }
+        
+        var currentContext : Tree { return context[0]! }
     }
     
-    func activeContexts() -> [Tree] {
-        return context.flatMap({ $0 })
-    }
-    
-    var currentContext : Tree { return context[0]! }
-    
-    private var context: Contexts { return Contexts(wrapping: wrap) }
-    
-    class Contexts : Collection {
+    internal class Contexts : Collection {
         let wrap : UnsafeMutablePointer<MODEL>
         
         public var startIndex : Int { return 0 }
@@ -254,16 +258,16 @@ func modernhal_learn(model: Model, words: [STRING])
     
     do {
         // Forward training
-        model.initializeForward()
-        words.forEach { model.updateModel(word: $0) }
-        model.updateModel(symbol: 1)
+        let forwardContext = model.initializeForward()
+        words.forEach { forwardContext.updateModel(word: $0) }
+        forwardContext.updateModel(symbol: 1)
     }
     
     do {
         // Backwards training
-        model.initializeBackward()
-        words.lazy.reversed().forEach { model.updateModel(word: $0) }
-        model.updateModel(symbol: 1)
+        let backwardContext = model.initializeBackward()
+        words.lazy.reversed().forEach { backwardContext.updateModel(word: $0) }
+        backwardContext.updateModel(symbol: 1)
     }
 }
 
@@ -305,7 +309,7 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
 {
     var replies = [STRING]()
     
-    model.initializeForward()
+    let forwardContext = model.initializeForward()
     
     used_key = false
     
@@ -314,10 +318,10 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
     
     while true {
         if start {
-            symbol = modernhal_seed(model: model, keys: keys)
+            symbol = modernhal_seed(model: model, context: forwardContext, keys: keys)
         }
         else {
-            symbol = modernhal_babble(model: model, keys: keys, words: replies)
+            symbol = modernhal_babble(model: model, context: forwardContext, keys: keys, words: replies)
         }
         
         if symbol == 0 || symbol == 1 {
@@ -328,27 +332,27 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
         
         replies.append(model.word(for: Int(symbol)))
         
-        model.updateContext(symbol: Int(symbol))
+        forwardContext.updateContext(symbol: Int(symbol))
     }
     
-    model.initializeBackward()
+    let backwardContext = model.initializeBackward()
     
     replies.lazy
         .prefix(min(replies.count, model.order))
         .reversed()
         .forEach {
-            model.updateContext(word: $0)
+            backwardContext.updateContext(word: $0)
         }
     
     while true {
-        symbol = modernhal_babble(model: model, keys: keys, words: replies)
+        symbol = modernhal_babble(model: model, context: backwardContext, keys: keys, words: replies)
         
         if symbol == 0 || symbol == 1 {
             break
         }
         
         replies.insert(model.word(for: Int(symbol)), at: 0)
-        model.updateContext(symbol: Int(symbol))
+        backwardContext.updateContext(symbol: Int(symbol))
     }
     
     return replies
@@ -362,7 +366,7 @@ func modernhal_evaluate_reply(model: Model,
     var num = 0
     var entropy : Float32 = 0
     
-    model.initializeForward()
+    let forwardContext = model.initializeForward()
     
     for word in words {
         let symbol = model.symbol(for: word)
@@ -373,7 +377,7 @@ func modernhal_evaluate_reply(model: Model,
             
             num += 1
             
-            for context in model.activeContexts() {
+            for context in forwardContext.activeContexts() {
                 let node = context.find(symbol: symbol)
                 probability += Float32(node.count) / Float32(context.usage)
                 count += 1
@@ -384,11 +388,11 @@ func modernhal_evaluate_reply(model: Model,
             }
         }
         
-        model.updateContext(symbol: symbol)
+        forwardContext.updateContext(symbol: symbol)
     }
     
     
-    model.initializeBackward()
+    let backwardContext = model.initializeBackward()
     
     for word in words.lazy.reversed() {
         let symbol = model.symbol(for: word)
@@ -399,7 +403,7 @@ func modernhal_evaluate_reply(model: Model,
             
             num += 1
             
-            for context in model.activeContexts() {
+            for context in backwardContext.activeContexts() {
                 let node = context.find(symbol: symbol)
                 probability += Float32(node.count) / Float32(context.usage)
                 count += 1
@@ -410,7 +414,7 @@ func modernhal_evaluate_reply(model: Model,
             }
         }
         
-        model.updateContext(symbol: symbol)
+        backwardContext.updateContext(symbol: symbol)
     }
     
     if num >= 8 {
@@ -535,8 +539,8 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
     keys.add(word: word)
 }
 
-func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
-    guard let node = model.longestAvailableContext() else {
+func modernhal_babble(model: Model, context:Model.Context, keys: Keywords, words: [STRING]) -> Int32 {
+    guard let node = context.longestAvailableContext() else {
         return 0
     }
     
@@ -569,15 +573,15 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
     return Int32(symbol)
 }
 
-func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
+func modernhal_seed(model: Model, context: Model.Context, keys: Keywords) -> Int32 {
     var symbol = 0
     
-    if model.currentContext.branch == 0 {
+    if context.currentContext.branch == 0 {
         symbol = 0
     }
     else {
-        symbol = Int(model.currentContext
-            .tree[ Int(rnd(Int32(model.currentContext.branch))) ]
+        symbol = Int(context.currentContext
+            .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
             .symbol)
     }
     
