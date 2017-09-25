@@ -41,7 +41,11 @@ class Model {
     }
     
     func updateContext(symbol: Int) {
-        update_context(wrap, Int32(symbol))
+        for i in (1 ..< order + 2).reversed() {
+            if context[i - 1] != nil {
+                context[i] = Tree(wrapping: find_symbol(context[i - 1]?.wrap, Int32(symbol)))
+            }
+        }
     }
     
     func updateModel(word: STRING) {
@@ -50,7 +54,11 @@ class Model {
     }
     
     func updateModel(symbol: Int) {
-        update_model(wrap, Int32(symbol))
+        for i in (1 ..< order + 2).reversed() {
+            if context[i - 1] != nil {
+                context[i] = Tree(wrapping: add_symbol(context[i - 1]?.wrap, UInt16(symbol)))
+            }
+        }
     }
     
     func longestAvailableContext() -> Tree? {
@@ -68,7 +76,13 @@ class Model {
         public func index(after i: Int) -> Int { return i + 1 }
         
         subscript(i: Int) -> Tree? {
-            return wrap.pointee.context.advanced(by: i).pointee.map { Tree(wrapping: $0) }
+            get {
+                return wrap.pointee.context.advanced(by: i).pointee.map { Tree(wrapping: $0) }
+            }
+            
+            set {
+                wrap.pointee.context.advanced(by: i).pointee = newValue?.wrap
+            }
         }
         
         init(wrapping: UnsafeMutablePointer<MODEL>) {
@@ -146,7 +160,7 @@ extension STRING {
 }
 
 class Tree {
-    private let wrap: UnsafeMutablePointer<TREE>
+    let wrap: UnsafeMutablePointer<TREE>
     
     init(wrapping: UnsafeMutablePointer<TREE>) {
         wrap = wrapping
