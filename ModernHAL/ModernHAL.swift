@@ -518,7 +518,7 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
 func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
     var symbol = 0
     
-    if model.wrap.pointee.context.advanced(by: 0).pointee?.pointee.branch == 0 {
+    if model.context[0]?.branch == 0 {
         symbol = 0
     }
     else {
