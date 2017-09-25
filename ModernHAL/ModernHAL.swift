@@ -211,7 +211,10 @@ class Tree {
     }
     
     func add(symbol: Int) -> Tree {
-        return Tree(wrapping: add_symbol(wrap, UInt16(symbol)))
+        let node = find_symbol_add(wrap, Int32(symbol))!
+        node.pointee.count += 1
+        wrap.pointee.usage += 1
+        return Tree(wrapping: node)
     }
     
     
