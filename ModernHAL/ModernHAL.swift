@@ -206,8 +206,10 @@ class Tree {
     var count  : Int   { return Int(wrap.pointee.count)  }
     var tree   : Trees { return Trees(wrapping: wrap)    }
     
-    func find(symbol: Int) -> Tree {
-        return Tree(wrapping: find_symbol(wrap, Int32(symbol)))
+    func find(symbol: Int) -> Tree? {
+        var found = false
+        let position = Int(search_node(wrap, Int32(symbol), &found))
+        return found ? tree[position] : nil
     }
     
     func add(symbol: Int) -> Tree {
@@ -378,7 +380,7 @@ func modernhal_evaluate_reply(model: Model,
             num += 1
             
             for context in forwardContext.activeContexts() {
-                let node = context.find(symbol: symbol)
+                let node = context.find(symbol: symbol)!
                 probability += Float32(node.count) / Float32(context.usage)
                 count += 1
             }
@@ -404,7 +406,7 @@ func modernhal_evaluate_reply(model: Model,
             num += 1
             
             for context in backwardContext.activeContexts() {
-                let node = context.find(symbol: symbol)
+                let node = context.find(symbol: symbol)!
                 probability += Float32(node.count) / Float32(context.usage)
                 count += 1
             }
