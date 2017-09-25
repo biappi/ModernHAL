@@ -53,19 +53,23 @@ class Model {
         update_model(wrap, Int32(symbol))
     }
     
-    func contexts() -> AnyIterator<UnsafeMutablePointer<TREE>?> {
-        var cur = 0
-        let size = Int(self.wrap.pointee.order)
+    var context: Contexts { return Contexts(wrapping: wrap) }
+    
+    class Contexts : Collection {
+        let wrap : UnsafeMutablePointer<MODEL>
         
-        return AnyIterator({
-            if cur == size {
-                return nil
-            }
-            else {
-                defer { cur += 1 }
-                return self.wrap.pointee.context.advanced(by: cur).pointee
-            }
-        })
+        public var startIndex : Int { return 0 }
+        public var endIndex   : Int { return Int(wrap.pointee.order) }
+        
+        public func index(after i: Int) -> Int { return i + 1 }
+        
+        subscript(i: Int) -> UnsafeMutablePointer<TREE>? {
+            return self.wrap.pointee.context.advanced(by: i).pointee
+        }
+        
+        init(wrapping: UnsafeMutablePointer<MODEL>) {
+            wrap = wrapping
+        }
     }
 }
 
@@ -281,7 +285,7 @@ func modernhal_evaluate_reply(model: Model,
             
             num += 1
             
-            for context in model.contexts().flatMap({ $0 }) {
+            for context in model.context.flatMap({ $0 }) {
                 let node = find_symbol(context, Int32(symbol))
                 probability += Float32(node!.pointee.count) / Float32(context.pointee.usage)
                 count += 1
@@ -307,7 +311,7 @@ func modernhal_evaluate_reply(model: Model,
             
             num += 1
             
-            for context in model.contexts().flatMap({ $0 }) {
+            for context in model.context.flatMap({ $0 }) {
                 let node = find_symbol(context, Int32(symbol))
                 probability += Float32(node!.pointee.count) / Float32(context.pointee.usage)
                 count += 1
@@ -483,20 +487,11 @@ func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
         symbol = 0
     }
     else {
-        symbol = Int(model
-            .wrap
-            .pointee
-            .context
-            .advanced(by: 0)
-            .pointee!
+        symbol = Int(model.context[0]!
             .pointee
             .tree
             .advanced(by: Int(rnd(Int32(model
-                .wrap
-                .pointee
-                .context
-                .advanced(by: 0)
-                .pointee!
+                .context[0]!
                 .pointee
                 .branch))))
             .pointee!
