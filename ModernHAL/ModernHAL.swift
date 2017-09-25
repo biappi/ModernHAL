@@ -78,6 +78,10 @@ class Keywords {
         wrap = new_dictionary()!
     }
     
+    func add(word: STRING){
+        add_word(wrap, word)
+    }
+    
     func find(word: STRING) -> Int {
         return Int(find_word(wrap, word))
     }
@@ -416,7 +420,7 @@ func modernhal_add_key(model: Model, keys: Keywords, word: STRING) {
         return
     }
     
-    add_word(keys.wrap, word)
+    keys.add(word: word)
 }
 
 func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
@@ -432,7 +436,7 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
         return
     }
     
-    add_word(keys.wrap, word)
+    keys.add(word: word)
 }
 
 func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
@@ -452,7 +456,7 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
     while count >= 0 {
         symbol = Int(node.pointee.tree.advanced(by: i).pointee!.pointee.symbol)
         
-        if ((find_word(keys.wrap, model.word(for: symbol)) != 0) &&
+        if ((keys.find(word: model.word(for: symbol)) != 0) &&
             ((used_key == true) || (find_word(aux, model.word(for: symbol)) == 0)) &&
             (words.contains(model.word(for: symbol)) == false))
         {
