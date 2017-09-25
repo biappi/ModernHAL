@@ -86,6 +86,7 @@ class Model {
     }
     
     var context: Contexts { return Contexts(wrapping: wrap) }
+    var currentContext : Tree { return context[0]! }
     
     class Contexts : Collection {
         let wrap : UnsafeMutablePointer<MODEL>
@@ -566,12 +567,12 @@ func modernhal_babble(model: Model, keys: Keywords, words: [STRING]) -> Int32 {
 func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
     var symbol = 0
     
-    if model.context[0]?.branch == 0 {
+    if model.currentContext.branch == 0 {
         symbol = 0
     }
     else {
-        symbol = Int(model.context[0]!
-            .tree[ Int(rnd(Int32(model.context[0]!.branch))) ]
+        symbol = Int(model.currentContext
+            .tree[ Int(rnd(Int32(model.currentContext.branch))) ]
             .symbol)
     }
     
