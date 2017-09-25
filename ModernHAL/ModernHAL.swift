@@ -70,7 +70,7 @@ class Model {
 }
 
 class Keywords {
-    let wrap : UnsafeMutablePointer<DICTIONARY>
+    private let wrap : UnsafeMutablePointer<DICTIONARY>
     
     var size : Int { return Int(wrap.pointee.size) }
     
