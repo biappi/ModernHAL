@@ -69,7 +69,7 @@ class Model {
     }
 }
 
-class Keywords : Sequence {
+class Keywords {
     let wrap : UnsafeMutablePointer<DICTIONARY>
     
     var size : Int { return Int(wrap.pointee.size) }
@@ -78,68 +78,18 @@ class Keywords : Sequence {
         wrap = new_dictionary()!
     }
     
-    init(wrapping model: UnsafeMutablePointer<DICTIONARY>) {
-        wrap = model
-    }
-    
     func find(word: STRING) -> Int {
         return Int(find_word(wrap, word))
     }
     
-    func makeIterator() -> AnyIterator<STRING> {
-        var cur = 0
+    func clear() {
         let size = Int(self.wrap.pointee.size)
         
-        return AnyIterator({
-            if cur == size {
-                return nil
-            }
-            else {
-                defer { cur += 1 }
-                return self.wrap.pointee.entry.advanced(by: cur).pointee
-            }
-        })
-    }
-    
-    func clear() {
+        for i in 0 ..< size {
+            self.wrap.pointee.entry.advanced(by: i).pointee.word.deallocate(capacity: 1)
+        }
+        
         free_dictionary(wrap)
-    }
-    
-    private func grow() {
-        if wrap.pointee.entry == nil {
-            wrap.pointee.entry = UnsafeMutablePointer<STRING>.allocate(capacity: Int(wrap.pointee.size) + 1)
-        }
-        else {
-            let p = realloc(wrap.pointee.entry, Int(wrap.pointee.size + 1) * MemoryLayout<STRING>.stride)
-            wrap.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
-        }
-    }
-    func append(word: STRING) {
-        grow()
-        
-        wrap.pointee.entry.advanced(by: Int(wrap.pointee.size)).pointee = word
-        wrap.pointee.size += 1
-    }
-    
-    func prepend(word:STRING) {
-        grow()
-        
-        for i in (1 ..< wrap.pointee.size + 1).reversed() {
-            wrap.pointee.entry.advanced(by: Int(i)).pointee.length
-                = wrap.pointee.entry.advanced(by: Int(i - 1)).pointee.length
-            
-            wrap.pointee.entry.advanced(by: Int(i)).pointee.word
-                = wrap.pointee.entry.advanced(by: Int(i - 1)).pointee.word
-        }
-        
-        wrap.pointee.entry.advanced(by: 0).pointee = word
-        wrap.pointee.size += 1
-    }
-    
-    var last : STRING? {
-        return size != 0
-            ? wrap.pointee.entry[size - 1]
-            : nil
     }
 }
 
@@ -430,7 +380,6 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
 
 let keys = Keywords()
 func modernhal_make_keywords(model: Model, words: [STRING]) -> Keywords {
-    keys.forEach { $0.word.deallocate(capacity: 1) }
     keys.clear()
     
     for word in words {
