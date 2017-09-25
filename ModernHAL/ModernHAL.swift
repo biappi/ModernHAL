@@ -146,7 +146,7 @@ extension STRING {
 }
 
 class Tree {
-    let wrap: UnsafeMutablePointer<TREE>
+    private let wrap: UnsafeMutablePointer<TREE>
     
     init(wrapping: UnsafeMutablePointer<TREE>) {
         wrap = wrapping
@@ -155,7 +155,12 @@ class Tree {
     var symbol : Int   { return Int(wrap.pointee.symbol) }
     var usage  : Int   { return Int(wrap.pointee.usage)  }
     var branch : Int   { return Int(wrap.pointee.branch) }
+    var count  : Int   { return Int(wrap.pointee.count)  }
     var tree   : Trees { return Trees(wrapping: wrap)    }
+    
+    func find(symbol: Int) -> Tree {
+        return Tree(wrapping: find_symbol(wrap, Int32(symbol)))
+    }
     
     class Trees : Collection {
         let wrap : UnsafeMutablePointer<TREE>
@@ -321,8 +326,8 @@ func modernhal_evaluate_reply(model: Model,
             num += 1
             
             for context in model.context.flatMap({ $0 }) {
-                let node = find_symbol(context.wrap, Int32(symbol))
-                probability += Float32(node!.pointee.count) / Float32(context.usage)
+                let node = context.find(symbol: symbol)
+                probability += Float32(node.count) / Float32(context.usage)
                 count += 1
             }
             
@@ -347,8 +352,8 @@ func modernhal_evaluate_reply(model: Model,
             num += 1
             
             for context in model.context.flatMap({ $0 }) {
-                let node = find_symbol(context.wrap, Int32(symbol))
-                probability += Float32(node!.pointee.count) / Float32(context.usage)
+                let node = context.find(symbol: symbol)
+                probability += Float32(node.count) / Float32(context.usage)
                 count += 1
             }
             
@@ -523,9 +528,7 @@ func modernhal_seed(model: Model, keys: Keywords) -> Int32 {
     }
     else {
         symbol = Int(model.context[0]!
-            .tree[ Int(rnd(Int32(model
-                .context[0]!
-                .branch)))]!
+            .tree[ Int(rnd(Int32(model.context[0]!.branch))) ]!
             .symbol)
     }
     
