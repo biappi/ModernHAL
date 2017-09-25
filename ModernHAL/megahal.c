@@ -2845,18 +2845,3 @@ void free_word(STRING word)
     free(word.word);
 }
 
-TREE *modernhal_longest_available_context(MODEL *model) {
-    TREE *node;
-    register int i;
-    
-    node = NULL;
-    
-    /*
-     *        Select the longest available context.
-     */
-    for(i=0; i<=model->order; ++i)
-        if(model->context[i]!=NULL)
-            node=model->context[i];
-    
-    return node;
-}

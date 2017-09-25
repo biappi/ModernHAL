@@ -62,7 +62,15 @@ class Model {
     }
     
     func longestAvailableContext() -> Tree? {
-        return Tree(wrapping: modernhal_longest_available_context(wrap))
+        var node : Tree?
+        
+        for  i in 0 ..< context.count + 1 {
+            if let c = context[i] {
+                node = c
+            }
+        }
+        
+        return node
     }
     
     var context: Contexts { return Contexts(wrapping: wrap) }
