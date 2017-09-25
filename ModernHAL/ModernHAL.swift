@@ -85,8 +85,13 @@ class Model {
         return node
     }
     
-    var context: Contexts { return Contexts(wrapping: wrap) }
+    func activeContexts() -> [Tree] {
+        return context.flatMap({ $0 })
+    }
+    
     var currentContext : Tree { return context[0]! }
+    
+    private var context: Contexts { return Contexts(wrapping: wrap) }
     
     class Contexts : Collection {
         let wrap : UnsafeMutablePointer<MODEL>
@@ -368,7 +373,7 @@ func modernhal_evaluate_reply(model: Model,
             
             num += 1
             
-            for context in model.context.flatMap({ $0 }) {
+            for context in model.activeContexts() {
                 let node = context.find(symbol: symbol)
                 probability += Float32(node.count) / Float32(context.usage)
                 count += 1
@@ -394,7 +399,7 @@ func modernhal_evaluate_reply(model: Model,
             
             num += 1
             
-            for context in model.context.flatMap({ $0 }) {
+            for context in model.activeContexts() {
                 let node = context.find(symbol: symbol)
                 probability += Float32(node.count) / Float32(context.usage)
                 count += 1
