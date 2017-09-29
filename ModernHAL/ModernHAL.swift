@@ -48,7 +48,10 @@ class Model {
             wrap = wrapping
             context = Contexts(wrapping: wrapping)
             
-            initialize_context(wrap)
+            for i in 0 ..< Int(wrap.pointee.order + 1) {
+                context[i] = nil
+            }
+            
             context[0] = initial
         }
         
