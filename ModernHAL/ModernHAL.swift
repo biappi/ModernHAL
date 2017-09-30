@@ -141,9 +141,39 @@ class Keywords {
         add_word(wrap, word)
     }
     
+    func search(word: STRING) -> (position: Int, found: Bool) {
+        if size == 0 {
+            return (0, false)
+        }
+        
+        var min = 0
+        var max = size - 1
+        
+        while true {
+            let middle = (min + max) / 2
+            
+            let c = wordcmp(word, self[Int(wrap.pointee.index.advanced(by: middle).pointee)])
+            
+            if c == 0 {
+                return (middle, true)
+            }
+            else if c > 0 {
+                if max == middle {
+                    return (middle + 1, false)
+                }
+                min = middle + 1
+            }
+            else {
+                if min == middle {
+                    return (middle, false)
+                }
+                max = middle - 1
+            }
+        }
+    }
+    
     func find(word: STRING) -> Int {
-        var found = false
-        let position = Int(search_dictionary(wrap, word, &found))
+        let (position, found) = search(word: word)
         return found ? Int(wrap.pointee.index.advanced(by: position).pointee) : 0
     }
     
