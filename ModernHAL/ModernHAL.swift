@@ -126,21 +126,17 @@ class Model {
 }
 
 class Keywords {
-    private let wrap : UnsafeMutablePointer<DICTIONARY>
+    var size : Int { return entries.count }
     
-    var size : Int { return Int(wrap.pointee.size) }
     var indices = [Int]()
     var entries = [STRING]()
     
-    convenience init() {
-        self.init(wrapping: new_dictionary()!)
-    }
-    
-    init(wrapping: UnsafeMutablePointer<DICTIONARY>) {
-        wrap = wrapping
-        for i in 0 ..< size {
-            indices.append(Int(wrap.pointee.index.advanced(by: i).pointee))
-            entries.append(wrap.pointee.entry.advanced(by: i).pointee)
+    convenience init(wrapping: UnsafeMutablePointer<DICTIONARY>) {
+        self.init()
+        
+        for i in 0 ..< Int(wrapping.pointee.size) {
+            indices.append(Int(wrapping.pointee.index.advanced(by: i).pointee))
+            entries.append(wrapping.pointee.entry.advanced(by: i).pointee)
         }
     }
     
@@ -150,13 +146,12 @@ class Keywords {
             return indices[position]
         }
         
-        wrap.pointee.size += 1
-        
         let w = UnsafeMutablePointer<Int8>.allocate(capacity: Int(word.length))
         memcpy(w, word.word, Int(word.length))
         
+        let newSymbol = entries.count
         entries.append(STRING(length: word.length, word: w))
-        indices.insert(size - 1, at: position)
+        indices.insert(newSymbol, at: position)
         
         return indices[position]
     }
