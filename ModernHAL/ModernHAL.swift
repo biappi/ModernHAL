@@ -20,8 +20,8 @@ class Model {
     
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
         wrap = model
-        forward = Tree(wrapping: wrap.pointee.forward)
-        backward = Tree(wrapping: wrap.pointee.backward)
+        forward = wrap.pointee.forward
+        backward = wrap.pointee.backward
     }
     
     func initializeForward() -> Context {
@@ -110,11 +110,11 @@ class Model {
         
         subscript(i: Int) -> Tree? {
             get {
-                return wrap.pointee.context.advanced(by: i).pointee.map { Tree(wrapping: $0) }
+                return wrap.pointee.context.advanced(by: i).pointee
             }
             
             set {
-                wrap.pointee.context.advanced(by: i).pointee = newValue?.wrap
+                wrap.pointee.context.advanced(by: i).pointee = newValue
             }
         }
         
@@ -196,18 +196,16 @@ extension STRING {
     }
 }
 
-class Tree {
-    let wrap: UnsafeMutablePointer<TREE>
+typealias Tree = UnsafeMutablePointer<TREE>
+extension UnsafeMutablePointer
+    where Pointee == TREE
+{
     
-    init(wrapping: UnsafeMutablePointer<TREE>) {
-        wrap = wrapping
-    }
-    
-    var symbol : Int   { return Int(wrap.pointee.symbol) }
-    var usage  : Int   { return Int(wrap.pointee.usage)  }
-    var branch : Int   { return Int(wrap.pointee.branch) }
-    var count  : Int   { return Int(wrap.pointee.count)  }
-    var tree   : Trees { return Trees(wrapping: wrap)    }
+    var symbol : Int   { return Int(self.pointee.symbol) }
+    var usage  : Int   { return Int(self.pointee.usage)  }
+    var branch : Int   { return Int(self.pointee.branch) }
+    var count  : Int   { return Int(self.pointee.count)  }
+    var tree   : Trees { return Trees(wrapping: self)    }
     
     func find(symbol: Int) -> Tree? {
         let (pos, found) = search(symbol: symbol)
@@ -219,18 +217,18 @@ class Tree {
         let node : UnsafeMutablePointer<TREE>
         
         if found {
-            node = tree[pos].wrap
+            node = tree[pos]
         }
         else {
             node = new_node()
             node.pointee.symbol = UInt16(symbol)
-            add_node(self.wrap, node, Int32(pos))
+            add_node(self, node, Int32(pos))
         }
         
         node.pointee.count += 1
-        wrap.pointee.usage += 1
+        pointee.usage += 1
         
-        return Tree(wrapping: node)
+        return node
     }
     
     
@@ -270,7 +268,7 @@ class Tree {
         public func index(after i: Int) -> Int { return i + 1 }
         
         subscript(i: Int) -> Tree {
-            return wrap.pointee.tree.advanced(by: i).pointee.map { Tree(wrapping: $0) }!
+            return wrap.pointee.tree.advanced(by: i).pointee!
         }
         
         init(wrapping: UnsafeMutablePointer<TREE>) {
