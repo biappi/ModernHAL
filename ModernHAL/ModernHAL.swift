@@ -130,6 +130,7 @@ class Keywords {
     
     var size : Int { return Int(wrap.pointee.size) }
     var indices = [Int]()
+    var entries = [STRING]()
     
     convenience init() {
         self.init(wrapping: new_dictionary()!)
@@ -139,16 +140,7 @@ class Keywords {
         wrap = wrapping
         for i in 0 ..< size {
             indices.append(Int(wrap.pointee.index.advanced(by: i).pointee))
-        }
-    }
-    
-    private func grow() {
-        if wrap.pointee.entry == nil {
-            wrap.pointee.entry = UnsafeMutablePointer<STRING>.allocate(capacity: Int(wrap.pointee.size) + 1)
-        }
-        else {
-            let p = realloc(wrap.pointee.entry, Int(wrap.pointee.size + 1) * MemoryLayout<STRING>.stride)
-            wrap.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
+            entries.append(wrap.pointee.entry.advanced(by: i).pointee)
         }
     }
     
@@ -158,15 +150,12 @@ class Keywords {
             return indices[position]
         }
         
-        grow()
-        
         wrap.pointee.size += 1
         
         let w = UnsafeMutablePointer<Int8>.allocate(capacity: Int(word.length))
         memcpy(w, word.word, Int(word.length))
         
-        self.wrap.pointee.entry.advanced(by: Int(wrap.pointee.size - 1)).pointee = STRING(length: word.length, word: w)
-        
+        entries.append(STRING(length: word.length, word: w))
         indices.insert(size - 1, at: position)
         
         return indices[position]
@@ -209,17 +198,18 @@ class Keywords {
     }
     
     func clear() {
-        let size = Int(self.wrap.pointee.size)
-        
-        for i in 0 ..< size {
-            self.wrap.pointee.entry.advanced(by: i).pointee.word.deallocate(capacity: 1)
+        for word in entries {
+            word.word.deallocate(capacity: 1)
         }
         
         free_dictionary(wrap)
+        entries = []
+        indices = []
+        
     }
     
     subscript(i: Int) -> STRING {
-        return self.wrap.pointee.entry.advanced(by: i).pointee
+        return self.entries[i]
     }
 }
 
