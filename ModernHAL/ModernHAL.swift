@@ -137,8 +137,45 @@ class Keywords {
         wrap = wrapping
     }
     
+    private func grow() {
+        if wrap.pointee.entry == nil {
+            wrap.pointee.entry = UnsafeMutablePointer<STRING>.allocate(capacity: Int(wrap.pointee.size) + 1)
+        }
+        else {
+            let p = realloc(wrap.pointee.entry, Int(wrap.pointee.size + 1) * MemoryLayout<STRING>.stride)
+            wrap.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
+        }
+        
+        if wrap.pointee.index == nil {
+            wrap.pointee.index = UnsafeMutablePointer<UInt16>.allocate(capacity: Int(wrap.pointee.size) + 1)
+        }
+        else {
+            let p = realloc(wrap.pointee.index, Int(wrap.pointee.size + 1) * MemoryLayout<UInt16>.stride)
+            wrap.pointee.index = p?.assumingMemoryBound(to: UInt16.self)
+        }
+        
+    }
+    
     func add(word: STRING) {
-        add_word(wrap, word)
+        let (position, found) = search(word: word)
+        if found {
+            return
+        }
+        
+        grow()
+        
+        wrap.pointee.size += 1
+        
+        let w = UnsafeMutablePointer<Int8>.allocate(capacity: Int(word.length))
+        memcpy(w, word.word, Int(word.length))
+        
+        self.wrap.pointee.entry.advanced(by: Int(wrap.pointee.size - 1)).pointee = STRING(length: word.length, word: w)
+        
+        for i in ((position + 1) ..< size).reversed() {
+            wrap.pointee.index.advanced(by: i).pointee = wrap.pointee.index.advanced(by: i - 1).pointee
+        }
+        
+        wrap.pointee.index.advanced(by: position).pointee = UInt16(size - 1)
     }
     
     func search(word: STRING) -> (position: Int, found: Bool) {
