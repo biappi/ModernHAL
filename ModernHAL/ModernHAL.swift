@@ -331,7 +331,7 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
     
     let forwardContext = model.initializeForward()
     
-    used_key = false
+    var used_key = false
     
     var start = true
     var symbol : Int32 = 0
@@ -341,7 +341,7 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
             symbol = modernhal_seed(model: model, context: forwardContext, keys: keys)
         }
         else {
-            symbol = modernhal_babble(model: model, context: forwardContext, keys: keys, words: replies)
+            (symbol, used_key) = modernhal_babble(model: model, context: forwardContext, keys: keys, words: replies, used_key: used_key)
         }
         
         if symbol == 0 || symbol == 1 {
@@ -365,7 +365,7 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
         }
     
     while true {
-        symbol = modernhal_babble(model: model, context: backwardContext, keys: keys, words: replies)
+        (symbol, used_key) = modernhal_babble(model: model, context: backwardContext, keys: keys, words: replies, used_key: used_key)
         
         if symbol == 0 || symbol == 1 {
             break
@@ -558,17 +558,24 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
     _ = keys.add(word: word)
 }
 
-func modernhal_babble(model: Model, context:Model.Context, keys: Keywords, words: [STRING]) -> Int32 {
+func modernhal_babble(model: Model,
+                      context:Model.Context,
+                      keys: Keywords,
+                      words: [STRING],
+                      used_key: Bool) -> (Int32, Bool)
+{
     guard let node = context.longestAvailableContext() else {
-        return 0
+        return (0, used_key)
     }
     
     if node.branch == 0 {
-        return 0
+        return (0, used_key)
     }
     
     var i = Int(rnd(Int32(node.branch)))
     var count = Int(rnd(Int32(node.usage)))
+    
+    var used_key = used_key
     
     var symbol : Int = 0
     
@@ -589,7 +596,7 @@ func modernhal_babble(model: Model, context:Model.Context, keys: Keywords, words
         i = (i >= (node.branch - 1)) ? 0 : i + 1
     }
     
-    return Int32(symbol)
+    return (Int32(symbol), used_key)
 }
 
 func modernhal_seed(model: Model, context: Model.Context, keys: Keywords) -> Int32 {
