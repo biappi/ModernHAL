@@ -999,13 +999,13 @@ void free_tree(TREE *tree)
  *
  *		Purpose:		Add dummy words to the dictionary.
  */
+STRING _word={ 7, "<ERROR>" };
+STRING _end={ 5, "<FIN>" };
+
 void initialize_dictionary(DICTIONARY *dictionary)
 {
-    STRING word={ 7, "<ERROR>" };
-    STRING end={ 5, "<FIN>" };
-    
-    (void)add_word(dictionary, word);
-    (void)add_word(dictionary, end);
+    (void)add_word(dictionary, _word);
+    (void)add_word(dictionary, _end);
 }
 
 /*---------------------------------------------------------------------------*/

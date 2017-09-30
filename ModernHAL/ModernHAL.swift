@@ -9,20 +9,16 @@
 import Foundation
 
 class Model {
-    let wrap : UnsafeMutablePointer<MODEL>
+    var order = 5
     
-    var order : Int { return Int(wrap.pointee.order) }
+    private var dictionary = Keywords()
     
-    private var dictionary : Keywords
-    
-    private var forward : Tree
-    private var backward : Tree
+    private var forward  = Tree()
+    private var backward = Tree()
     
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
-        wrap = model
-        forward = Tree()
-        backward = Tree()
-        dictionary = Keywords(wrapping: wrap.pointee.dictionary)
+        dictionary.add(word: _word)
+        dictionary.add(word: _end)
     }
     
     func initializeForward() -> Context {

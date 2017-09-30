@@ -206,4 +206,7 @@ extern SWAP *swp;
 extern DICTIONARY *ban;
 extern DICTIONARY *aux;
 
+extern STRING _word;
+extern STRING _end;
+
 #endif /* MEGAHAL_H  */
