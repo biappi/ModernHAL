@@ -130,6 +130,8 @@ class ModernHALTests: XCTestCase {
                     srand48(0)
                     let first  = String(cString: megahal_do_reply(s, 0))
                     srand48(0)
+                    megahal_initialize()
+                    
                     let second = modernhal_do_reply(input: string)
                     
                     print(first)

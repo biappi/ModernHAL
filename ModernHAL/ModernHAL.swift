@@ -44,6 +44,15 @@ class Model {
         update_context(wrap, Int32(symbol))
     }
     
+    func updateModel(word: STRING) {
+        let symbol = Int(add_word(wrap.pointee.dictionary, word))
+        update_model(wrap, Int32(symbol))
+    }
+    
+    func updateModel(symbol: Int) {
+        update_model(wrap, Int32(symbol))
+    }
+    
     func contexts() -> AnyIterator<UnsafeMutablePointer<TREE>?> {
         var cur = 0
         let size = Int(self.wrap.pointee.order)
@@ -76,37 +85,36 @@ func modernhal_do_reply(input: String) -> String {
     }
 }
 
-func modernhal_learn(model: UnsafeMutablePointer<MODEL>,
+func modernhal_learn(model m: UnsafeMutablePointer<MODEL>,
                      words: UnsafeMutablePointer<DICTIONARY>)
 {
-    if words.pointee.size <= model.pointee.order {
+    let model = Model(wrapping: m)
+    
+    if words.pointee.size <= model.order {
         return
     }
     
     do {
         // Forward training
-        Model(wrapping: model).initializeForward()
+        model.initializeForward()
         
         for i in 0 ..< words.pointee.size {
-            let symbol = add_word(model.pointee.dictionary,
-                                  words.pointee.entry.advanced(by: Int(i)).pointee)
-            update_model(model, Int32(symbol))
+            model.updateModel(word: words.pointee.entry.advanced(by: Int(i)).pointee)
         }
         
-        update_model(model, 1)
+        model.updateModel(symbol: 1)
+        
     }
     
     do {
         // Backwards training
-        Model(wrapping: model).initializeBackward()
+        model.initializeBackward()
         
         for i in (0 ..< words.pointee.size).reversed() {
-            let symbol = add_word(model.pointee.dictionary,
-                                  words.pointee.entry.advanced(by: Int(i)).pointee)
-            update_model(model, Int32(symbol))
+            model.updateModel(word: words.pointee.entry.advanced(by: Int(i)).pointee)
         }
         
-        update_model(model, 1)
+        model.updateModel(symbol: 1)
     }
 }
 
