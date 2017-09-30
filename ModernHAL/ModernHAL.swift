@@ -42,22 +42,17 @@ class Model {
     }
     
     class Context {
-        private var context: Contexts
+        private var context: [Tree?]
         private let wrap : Model
         
         internal init(wrapping: Model, initial: Tree) {
             wrap = wrapping
-            context = Contexts(wrapping: wrapping.wrap)
-            
-            for i in 0 ..< (wrap.order + 1) {
-                context[i] = nil
-            }
-            
+            context = [Tree?](repeating:nil, count: Int(wrapping.order + 2))
             context[0] = initial
         }
         
         func activeContexts() -> [Tree] {
-            return context.flatMap({ $0 })
+            return context.prefix(wrap.order).flatMap({ $0 })
         }
         
         func updateContext(word: STRING) {
@@ -99,29 +94,6 @@ class Model {
         }
         
         var currentContext : Tree { return context[0]! }
-    }
-    
-    internal class Contexts : Collection {
-        let wrap : UnsafeMutablePointer<MODEL>
-        
-        public var startIndex : Int { return 0 }
-        public var endIndex   : Int { return Int(wrap.pointee.order) }
-        
-        public func index(after i: Int) -> Int { return i + 1 }
-        
-        subscript(i: Int) -> Tree? {
-            get {
-                return wrap.pointee.context.advanced(by: i).pointee
-            }
-            
-            set {
-                wrap.pointee.context.advanced(by: i).pointee = newValue
-            }
-        }
-        
-        init(wrapping: UnsafeMutablePointer<MODEL>) {
-            wrap = wrapping
-        }
     }
 }
 
