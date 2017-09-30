@@ -142,7 +142,9 @@ class Keywords {
     }
     
     func find(word: STRING) -> Int {
-        return Int(find_word(wrap, word))
+        var found = false
+        let position = Int(search_dictionary(wrap, word, &found))
+        return found ? Int(wrap.pointee.index.advanced(by: position).pointee) : 0
     }
     
     func clear() {
