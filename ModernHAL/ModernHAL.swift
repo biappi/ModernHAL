@@ -17,8 +17,8 @@ class Model {
     private var backward = Tree()
     
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
-        dictionary.add(word: _word)
-        dictionary.add(word: _end)
+        _ = dictionary.add(word: _word)
+        _ = dictionary.add(word: _end)
     }
     
     func initializeForward() -> Context {
@@ -548,7 +548,7 @@ func modernhal_add_key(model: Model, keys: Keywords, word: STRING) {
         return
     }
     
-    keys.add(word: word)
+    _ = keys.add(word: word)
 }
 
 func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
@@ -564,7 +564,7 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
         return
     }
     
-    keys.add(word: word)
+    _ = keys.add(word: word)
 }
 
 func modernhal_babble(model: Model, context:Model.Context, keys: Keywords, words: [STRING]) -> Int32 {
