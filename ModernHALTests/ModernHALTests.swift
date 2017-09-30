@@ -64,19 +64,6 @@ extension STRING {
 
 class ModernHALTests: XCTestCase {
     
-    override func setUp() {
-        super.setUp()
-        
-        megahal_initialize()
-        
-        srand48(0)
-        smokeTestInput.forEach {
-            $0.withCString {
-                _ = megahal_do_reply(UnsafeMutablePointer(mutating: $0), 0)
-            }
-        }
-    }
-    
     override func tearDown() {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
         super.tearDown()
@@ -94,6 +81,15 @@ class ModernHALTests: XCTestCase {
             "Three test one test two test.",
             "Two test three."
         ]
+        
+        megahal_initialize()
+        
+        srand48(0)
+        smokeTestInput.forEach {
+            $0.withCString {
+                _ = megahal_do_reply(UnsafeMutablePointer(mutating: $0), 0)
+            }
+        }
         
         srand48(0)
         let answers = smokeTestInput.map {
@@ -133,6 +129,9 @@ class ModernHALTests: XCTestCase {
                     return first == second
                 }
             }
+    }
+    
+    func test_reply() {
         
         property("do_reply") <-
         forAllNoShrink(words) { (string: String) in
