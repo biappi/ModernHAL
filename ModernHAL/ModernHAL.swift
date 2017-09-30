@@ -20,8 +20,8 @@ class Model {
     
     init(wrapping model: UnsafeMutablePointer<MODEL>) {
         wrap = model
-        forward = wrap.pointee.forward
-        backward = wrap.pointee.backward
+        forward = Tree()
+        backward = Tree()
         dictionary = Keywords(wrapping: wrap.pointee.dictionary)
     }
     
@@ -205,16 +205,13 @@ extension STRING {
     }
 }
 
-typealias Tree = UnsafeMutablePointer<TREE>
-extension UnsafeMutablePointer
-    where Pointee == TREE
+class Tree
 {
-    
-    var symbol : Int   { return Int(self.pointee.symbol) }
-    var usage  : Int   { return Int(self.pointee.usage)  }
-    var branch : Int   { return Int(self.pointee.branch) }
-    var count  : Int   { return Int(self.pointee.count)  }
-    var tree   : Trees { return Trees(wrapping: self)    }
+    var symbol : Int    = 0
+    var usage  : Int    = 0
+    var branch : Int    { return tree.count }
+    var count  : Int    = 0
+    var tree   : [Tree] = []
     
     func find(symbol: Int) -> Tree? {
         let (pos, found) = search(symbol: symbol)
@@ -223,19 +220,19 @@ extension UnsafeMutablePointer
     
     func add(symbol: Int) -> Tree {
         let (pos, found) = search(symbol: symbol)
-        let node : UnsafeMutablePointer<TREE>
+        let node : Tree
         
         if found {
             node = tree[pos]
         }
         else {
-            node = new_node()
-            node.pointee.symbol = UInt16(symbol)
-            add_node(self, node, Int32(pos))
+            node = Tree()
+            node.symbol = symbol
+            tree.insert(node, at: pos)
         }
         
-        node.pointee.count += 1
-        pointee.usage += 1
+        node.count += 1
+        usage += 1
         
         return node
     }
@@ -265,23 +262,6 @@ extension UnsafeMutablePointer
                 if min == middle { return (middle, false) }
                 max = middle - 1
             }
-        }
-    }
-    
-    class Trees : Collection {
-        let wrap : UnsafeMutablePointer<TREE>
-        
-        public var startIndex : Int { return 0 }
-        public var endIndex   : Int { return Int(wrap.pointee.branch) }
-        
-        public func index(after i: Int) -> Int { return i + 1 }
-        
-        subscript(i: Int) -> Tree {
-            return wrap.pointee.tree.advanced(by: i).pointee!
-        }
-        
-        init(wrapping: UnsafeMutablePointer<TREE>) {
-            wrap = wrapping
         }
     }
 }
