@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "10C8430BA57D566AC54F9F45CAFE6ED7BC40DF3E",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "10C8430BA57D566AC54F9F45CAFE6ED7BC40DF3E" : 9223372036854775807,
+    "53964F28C4CCA0826677C9F951DD3F64C20326C4" : 9223372036854775807
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "EDA71110-1020-4052-9B53-3AFB74F567C2",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "10C8430BA57D566AC54F9F45CAFE6ED7BC40DF3E" : "ModernHAL\/",
+    "53964F28C4CCA0826677C9F951DD3F64C20326C4" : "ModernHAL\/SwiftCheck\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "ModernHAL",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "ModernHAL.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/biappi\/ModernHAL.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "10C8430BA57D566AC54F9F45CAFE6ED7BC40DF3E"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/typelift\/SwiftCheck.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "53964F28C4CCA0826677C9F951DD3F64C20326C4"
+    }
+  ]
+}

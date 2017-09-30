@@ -129,13 +129,17 @@ class Keywords {
     private let wrap : UnsafeMutablePointer<DICTIONARY>
     
     var size : Int { return Int(wrap.pointee.size) }
+    var indices = [Int]()
     
-    init() {
-        wrap = new_dictionary()!
+    convenience init() {
+        self.init(wrapping: new_dictionary()!)
     }
     
     init(wrapping: UnsafeMutablePointer<DICTIONARY>) {
         wrap = wrapping
+        for i in 0 ..< size {
+            indices.append(Int(wrap.pointee.index.advanced(by: i).pointee))
+        }
     }
     
     private func grow() {
@@ -146,21 +150,12 @@ class Keywords {
             let p = realloc(wrap.pointee.entry, Int(wrap.pointee.size + 1) * MemoryLayout<STRING>.stride)
             wrap.pointee.entry = p?.assumingMemoryBound(to: STRING.self)
         }
-        
-        if wrap.pointee.index == nil {
-            wrap.pointee.index = UnsafeMutablePointer<UInt16>.allocate(capacity: Int(wrap.pointee.size) + 1)
-        }
-        else {
-            let p = realloc(wrap.pointee.index, Int(wrap.pointee.size + 1) * MemoryLayout<UInt16>.stride)
-            wrap.pointee.index = p?.assumingMemoryBound(to: UInt16.self)
-        }
-        
     }
     
     func add(word: STRING) -> Int {
         let (position, found) = search(word: word)
         if found {
-            return Int(wrap.pointee.index.advanced(by: position).pointee)
+            return indices[position]
         }
         
         grow()
@@ -172,12 +167,9 @@ class Keywords {
         
         self.wrap.pointee.entry.advanced(by: Int(wrap.pointee.size - 1)).pointee = STRING(length: word.length, word: w)
         
-        for i in ((position + 1) ..< size).reversed() {
-            wrap.pointee.index.advanced(by: i).pointee = wrap.pointee.index.advanced(by: i - 1).pointee
-        }
+        indices.insert(size - 1, at: position)
         
-        wrap.pointee.index.advanced(by: position).pointee = UInt16(size - 1)
-        return Int(wrap.pointee.index.advanced(by: position).pointee)
+        return indices[position]
     }
     
     func search(word: STRING) -> (position: Int, found: Bool) {
@@ -191,7 +183,7 @@ class Keywords {
         while true {
             let middle = (min + max) / 2
             
-            let c = wordcmp(word, self[Int(wrap.pointee.index.advanced(by: middle).pointee)])
+            let c = wordcmp(word, self[indices[middle]])
             
             if c == 0 {
                 return (middle, true)
@@ -213,7 +205,7 @@ class Keywords {
     
     func find(word: STRING) -> Int {
         let (position, found) = search(word: word)
-        return found ? Int(wrap.pointee.index.advanced(by: position).pointee) : 0
+        return found ? indices[position] : 0
     }
     
     func clear() {
@@ -348,8 +340,7 @@ extension UnsafeMutablePointer
     }
 }
 
-func modernhal_do_reply(input: String) -> String {
-    let globalModel = Model(wrapping: model)
+func modernhal_do_reply(globalModel: Model, input: String) -> String {
     
     return input.uppercased().withCString {
         let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
