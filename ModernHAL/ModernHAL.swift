@@ -13,7 +13,7 @@ class Model {
     
     var order : Int { return Int(wrap.pointee.order) }
     
-    private var dictionary : Keywords { return Keywords(wrapping: wrap.pointee.dictionary) }
+    private var dictionary : Keywords
     
     private var forward : Tree
     private var backward : Tree
@@ -22,14 +22,15 @@ class Model {
         wrap = model
         forward = wrap.pointee.forward
         backward = wrap.pointee.backward
+        dictionary = Keywords(wrapping: wrap.pointee.dictionary)
     }
     
     func initializeForward() -> Context {
-        return Context(wrapping: wrap, initial: forward)
+        return Context(wrapping: self, initial: forward)
     }
     
     func initializeBackward() -> Context {
-        return Context(wrapping: wrap, initial: backward)
+        return Context(wrapping: self, initial: backward)
     }
     
     func symbol(for word: STRING) -> Int {
@@ -42,13 +43,13 @@ class Model {
     
     class Context {
         private var context: Contexts
-        private let wrap : UnsafeMutablePointer<MODEL>
+        private let wrap : Model
         
-        internal init(wrapping: UnsafeMutablePointer<MODEL>, initial: Tree) {
+        internal init(wrapping: Model, initial: Tree) {
             wrap = wrapping
-            context = Contexts(wrapping: wrapping)
+            context = Contexts(wrapping: wrapping.wrap)
             
-            for i in 0 ..< Int(wrap.pointee.order + 1) {
+            for i in 0 ..< (wrap.order + 1) {
                 context[i] = nil
             }
             
@@ -60,12 +61,12 @@ class Model {
         }
         
         func updateContext(word: STRING) {
-            let symbol = Int(find_word(wrap.pointee.dictionary, word))
+            let symbol = wrap.dictionary.find(word: word)
             updateContext(symbol: symbol)
         }
         
         func updateContext(symbol: Int) {
-            for i in (1 ..< Int(wrap.pointee.order + 2)).reversed() {
+            for i in (1 ..< (wrap.order + 2)).reversed() {
                 if context[i - 1] != nil {
                     context[i] = context[i - 1]?.find(symbol: symbol)
                 }
@@ -73,12 +74,12 @@ class Model {
         }
         
         func updateModel(word: STRING) {
-            let symbol = Int(add_word(wrap.pointee.dictionary, word))
+            let symbol = wrap.dictionary.add(word: word)
             updateModel(symbol: symbol)
         }
         
         func updateModel(symbol: Int) {
-            for i in (1 ..< Int(wrap.pointee.order + 2)).reversed() {
+            for i in (1 ..< Int(wrap.order + 2)).reversed() {
                 if context[i - 1] != nil {
                     context[i] = context[i - 1]?.add(symbol:symbol)
                 }
@@ -88,7 +89,7 @@ class Model {
         func longestAvailableContext() -> Tree? {
             var node : Tree?
             
-            for  i in 0 ..< context.count + 1 {
+            for  i in 0 ..< wrap.order + 1 {
                 if let c = context[i] {
                     node = c
                 }
@@ -156,10 +157,10 @@ class Keywords {
         
     }
     
-    func add(word: STRING) {
+    func add(word: STRING) -> Int {
         let (position, found) = search(word: word)
         if found {
-            return
+            return Int(wrap.pointee.index.advanced(by: position).pointee)
         }
         
         grow()
@@ -176,6 +177,7 @@ class Keywords {
         }
         
         wrap.pointee.index.advanced(by: position).pointee = UInt16(size - 1)
+        return Int(wrap.pointee.index.advanced(by: position).pointee)
     }
     
     func search(word: STRING) -> (position: Int, found: Bool) {
