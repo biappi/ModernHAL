@@ -98,16 +98,7 @@ class Keywords {
     
     var indices = [Int]()
     var entries = [STRING]()
-    
-    convenience init(wrapping: UnsafeMutablePointer<DICTIONARY>) {
-        self.init()
         
-        for i in 0 ..< Int(wrapping.pointee.size) {
-            indices.append(Int(wrapping.pointee.index.advanced(by: i).pointee))
-            entries.append(wrapping.pointee.entry.advanced(by: i).pointee)
-        }
-    }
-    
     func add(word: STRING) -> Int {
         let (position, found) = search(word: word)
         if found {
