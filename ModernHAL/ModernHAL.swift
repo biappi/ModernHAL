@@ -196,18 +196,7 @@ class Keywords {
         let (position, found) = search(word: word)
         return found ? indices[position] : 0
     }
-    
-    func clear() {
-        for word in entries {
-            word.word.deallocate(capacity: 1)
-        }
         
-        free_dictionary(wrap)
-        entries = []
-        indices = []
-        
-    }
-    
     subscript(i: Int) -> STRING {
         return self.entries[i]
     }
@@ -579,9 +568,8 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
     return dictionary
 }
 
-let keys = Keywords()
 func modernhal_make_keywords(model: Model, words: [STRING]) -> Keywords {
-    keys.clear()
+    let keys = Keywords()
     
     for word in words {
         let swaps = swp.pointee[word]
