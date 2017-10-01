@@ -569,6 +569,7 @@ func modernhal_add_key(model: Model, personality: Personality, keys: Keywords, w
         return
     }
     
+
     if personality.auxy.contains(word) && personality.auxy.first != word {
         return
     }
