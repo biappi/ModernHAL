@@ -318,7 +318,6 @@ func modernhal_learn(model: Model, words: [STRING])
     }
 }
 
-let dummy = Keywords()
 func modernhal_generate_reply(model: Model,
                               personality: Personality,
                               words: [STRING]) -> String
@@ -326,7 +325,7 @@ func modernhal_generate_reply(model: Model,
     var output   = "I don't know enough to answer you yet!"
     let keywords = modernhal_make_keywords(model: model, personality: personality, words: words)
     
-    var replywords = modernhal_reply(model: model, personality: personality, keys: dummy)
+    var replywords = modernhal_reply(model: model, personality: personality, keys: Keywords())
     
     
     if words != replywords {
