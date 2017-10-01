@@ -156,28 +156,6 @@ class Keywords {
     }
 }
 
-extension SWAP : Collection {
-    public var startIndex : Int { return 0 }
-    public var endIndex   : Int { return Int(size) }
-    
-    public func index(after i: Int) -> Int { return i + 1 }
-    
-    public subscript(i: Int) -> (from: STRING, to: STRING) {
-        return (from: from.advanced(by: i).pointee,
-                to:   to.advanced(by: i).pointee)
-    }
-    
-    subscript(from: STRING) -> [STRING]
-    {
-        return Array(
-            self
-                .lazy
-                .filter { wordcmp($0.from, from) == 0 }
-                .map { $0.to }
-        )
-    }
-}
-
 extension STRING : Equatable { }
 
 public func ==(lhs: STRING, rhs: STRING) -> Bool {
