@@ -278,24 +278,249 @@ class Personality {
         bann = (0 ..< Int(ban.pointee.size))
             .map { ban.pointee.entry.advanced(by: $0).pointee }
     }
-}
-
-func modernhal_do_reply(globalModel: Model, personality: Personality, input: String) -> String {
     
-    return input.uppercased().withCString {
-        let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
+    
+    func doReply(input: String) -> String {
         
-        modernhal_learn(model: globalModel, words: words)
+        return input.uppercased().withCString {
+            let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
+            
+            modernhal_learn(model: model, words: words)
+            
+            let output = generateReply(words: words)
+            
+            var outputData = output.data(using: .utf8)
+            outputData?.append(0)
+            outputData?.withUnsafeMutableBytes { capitalize($0) }
+            outputData!.remove(at: outputData!.count - 1)
+            return outputData.map { String(data: $0, encoding: .utf8)! }!
+        }
+    }
+    
+    func generateReply(words: [STRING]) -> String
+    {
+        var output   = "I don't know enough to answer you yet!"
+        let keywords = makeKeywords(words: words)
         
-        let output = modernhal_generate_reply(model: globalModel, personality: personality, words: words)
+        var replywords = reply(keys: Keywords())
         
-        var outputData = output.data(using: .utf8)
-        outputData?.append(0)
-        outputData?.withUnsafeMutableBytes { capitalize($0) }
-        outputData!.remove(at: outputData!.count - 1)
-        return outputData.map { String(data: $0, encoding: .utf8)! }!
+        
+        if words != replywords {
+            output = replywords.map { $0.toString() }.joined()
+        }
+        
+        var count = 0
+        var maxSurprise : Float32 = -10.0
+        
+        for _ in 0 ..< 10 {
+            replywords = reply(keys: keywords)
+            let surprise = modernhal_evaluate_reply(model: model,
+                                                    keys: keywords,
+                                                    words: replywords)
+            
+            count += 1
+            
+            if surprise > maxSurprise && (words != replywords) {
+                maxSurprise = surprise
+                output = replywords.map { $0.toString() }.joined()
+            }
+        }
+        
+        return output == "" ? "I am utterly speechless!" : output
+    }
+    
+    func reply(keys: Keywords) -> [STRING]
+    {
+        var replies = [STRING]()
+        
+        let forwardContext = model.initializeForward()
+        
+        var used_key = false
+        
+        var start = true
+        var symbol : Int32 = 0
+        
+        while true {
+            if start {
+                symbol = seed(context: forwardContext,
+                              keys: keys)
+            }
+            else {
+                (symbol, used_key) = babble(context: forwardContext,
+                                            keys: keys,
+                                            words: replies,
+                                            used_key: used_key)
+            }
+            
+            if symbol == 0 || symbol == 1 {
+                break
+            }
+            
+            start = false
+            
+            replies.append(model.word(for: Int(symbol)))
+            
+            forwardContext.updateContext(symbol: Int(symbol))
+        }
+        
+        let backwardContext = model.initializeBackward()
+        
+        replies.lazy
+            .prefix(min(replies.count, model.order))
+            .reversed()
+            .forEach {
+                backwardContext.updateContext(word: $0)
+        }
+        
+        while true {
+            (symbol, used_key) = babble(context: backwardContext,
+                                        keys: keys,
+                                        words: replies,
+                                        used_key: used_key)
+            
+            if symbol == 0 || symbol == 1 {
+                break
+            }
+            
+            replies.insert(model.word(for: Int(symbol)), at: 0)
+            backwardContext.updateContext(symbol: Int(symbol))
+        }
+        
+        return replies
+    }
+    func makeKeywords(words: [STRING]) -> Keywords {
+        let keys = Keywords()
+        
+        for word in words {
+            let toAdd = swap[word] ?? [word]
+            toAdd.forEach { addKey(keys: keys, word: $0) }
+        }
+        
+        if keys.size > 0 {
+            for word in words {
+                let toAdd = swap[word] ?? [word]
+                toAdd.forEach { addAux(keys: keys, word: $0) }
+            }
+        }
+        
+        return keys
+    }
+    
+    func addKey(keys: Keywords, word: STRING) {
+        if model.symbol(for: word) == 0 {
+            return
+        }
+        
+        if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
+            return
+        }
+        
+        if bann.contains(word) {
+            return
+        }
+        
+        if auxy.contains(word) && auxy.first != word {
+            return
+        }
+        
+        _ = keys.add(word: word)
+    }
+    
+    func addAux(keys: Keywords, word: STRING) {
+        if model.symbol(for: word) == 0 {
+            return
+        }
+        
+        if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
+            return
+        }
+        
+        if !auxy.contains(word) || auxy.first == word {
+            return
+        }
+        
+        _ = keys.add(word: word)
+    }
+    
+    func babble(context: Model.Context,
+                keys: Keywords,
+                words: [STRING],
+                used_key: Bool) -> (Int32, Bool)
+    {
+        guard let node = context.longestAvailableContext() else {
+            return (0, used_key)
+        }
+        
+        if node.branch == 0 {
+            return (0, used_key)
+        }
+        
+        var i = Int(rnd(Int32(node.branch)))
+        var count = Int(rnd(Int32(node.usage)))
+        
+        var used_key = used_key
+        
+        var symbol : Int = 0
+        
+        while count >= 0 {
+            symbol = Int(node.tree[i].symbol)
+            
+            if ((keys.find(word: model.word(for: symbol)) != 0) &&
+                ((used_key == true) ||
+                    (!auxy.contains(model.word(for: symbol)) || auxy.first == model.word(for: symbol))) &&
+                (words.contains(model.word(for: symbol)) == false))
+            {
+                used_key = true
+                break;
+            }
+            
+            
+            count -= node.tree[i].count
+            
+            i = (i >= (node.branch - 1)) ? 0 : i + 1
+        }
+        
+        return (Int32(symbol), used_key)
+    }
+    
+    func seed(context: Model.Context, keys: Keywords) -> Int32 {
+        var symbol = 0
+        
+        if context.currentContext.branch == 0 {
+            symbol = 0
+        }
+        else {
+            symbol = Int(context.currentContext
+                .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
+                .symbol)
+        }
+        
+        if keys.size > 0 {
+            var i = Int(rnd(Int32(keys.size)))
+            let stop = i
+            
+            while true {
+                if (model.symbol(for: keys[i]) != 0) && (!auxy.contains(keys[i]) || auxy.first == keys[i])
+                {
+                    return Int32(model.symbol(for: keys[i]))
+                }
+                
+                i += 1
+        
+                if i == keys.size {
+                    i = 0
+                }
+                
+                if i == stop {
+                    return Int32(symbol)
+                }
+            }
+        }
+        
+        return Int32(symbol)
     }
 }
+
 
 func modernhal_learn(model: Model, words: [STRING])
 {
@@ -316,101 +541,6 @@ func modernhal_learn(model: Model, words: [STRING])
         words.lazy.reversed().forEach { backwardContext.updateModel(word: $0) }
         backwardContext.updateModel(symbol: 1)
     }
-}
-
-func modernhal_generate_reply(model: Model,
-                              personality: Personality,
-                              words: [STRING]) -> String
-{
-    var output   = "I don't know enough to answer you yet!"
-    let keywords = modernhal_make_keywords(model: model, personality: personality, words: words)
-    
-    var replywords = modernhal_reply(model: model, personality: personality, keys: Keywords())
-    
-    
-    if words != replywords {
-        output = replywords.map { $0.toString() }.joined()
-    }
-    
-    var count = 0
-    var maxSurprise : Float32 = -10.0
-    
-    for _ in 0 ..< 10 {
-        replywords = modernhal_reply(model: model, personality: personality, keys: keywords)
-        let surprise = modernhal_evaluate_reply(model: model,
-                                                keys: keywords,
-                                                words: replywords)
-        
-        count += 1
-        
-        if surprise > maxSurprise && (words != replywords) {
-            maxSurprise = surprise
-            output = replywords.map { $0.toString() }.joined()
-        }
-    }
-    
-    return output == "" ? "I am utterly speechless!" : output
-}
-
-func modernhal_reply(model: Model, personality: Personality, keys: Keywords) -> [STRING]
-{
-    var replies = [STRING]()
-    
-    let forwardContext = model.initializeForward()
-    
-    var used_key = false
-    
-    var start = true
-    var symbol : Int32 = 0
-    
-    while true {
-        if start {
-            symbol = modernhal_seed(model: model,
-                                    context: forwardContext,
-                                    personality: personality,
-                                    keys: keys)
-        }
-        else {
-            (symbol, used_key) = modernhal_babble(model: model,
-                                                  context: forwardContext,
-                                                  personality: personality,
-                                                  keys: keys,
-                                                  words: replies,
-                                                  used_key: used_key)
-        }
-        
-        if symbol == 0 || symbol == 1 {
-            break
-        }
-        
-        start = false
-        
-        replies.append(model.word(for: Int(symbol)))
-        
-        forwardContext.updateContext(symbol: Int(symbol))
-    }
-    
-    let backwardContext = model.initializeBackward()
-    
-    replies.lazy
-        .prefix(min(replies.count, model.order))
-        .reversed()
-        .forEach {
-            backwardContext.updateContext(word: $0)
-        }
-    
-    while true {
-        (symbol, used_key) = modernhal_babble(model: model, context: backwardContext, personality: personality, keys: keys, words: replies, used_key: used_key)
-        
-        if symbol == 0 || symbol == 1 {
-            break
-        }
-        
-        replies.insert(model.word(for: Int(symbol)), at: 0)
-        backwardContext.updateContext(symbol: Int(symbol))
-    }
-    
-    return replies
 }
 
 func modernhal_evaluate_reply(model: Model,
@@ -537,138 +667,4 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
     return dictionary
 }
 
-func modernhal_make_keywords(model: Model, personality: Personality, words: [STRING]) -> Keywords {
-    let keys = Keywords()
-    
-    for word in words {
-        let toAdd = personality.swap[word] ?? [word]
-        toAdd.forEach { modernhal_add_key(model: model, personality: personality, keys: keys, word: $0) }
-    }
-    
-    if keys.size > 0 {
-        for word in words {
-            let toAdd = personality.swap[word] ?? [word]
-            toAdd.forEach { modernhal_add_aux(model: model, personality: personality, keys: keys, word: $0) }
-        }
-    }
-    
-    return keys
-}
-
-func modernhal_add_key(model: Model, personality: Personality, keys: Keywords, word: STRING) {
-    if model.symbol(for: word) == 0 {
-        return
-    }
-    
-    if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
-        return
-    }
-    
-    if personality.bann.contains(word) {
-        return
-    }
-    
-
-    if personality.auxy.contains(word) && personality.auxy.first != word {
-        return
-    }
-    
-    _ = keys.add(word: word)
-}
-
-func modernhal_add_aux(model: Model, personality: Personality, keys: Keywords, word: STRING) {
-    if model.symbol(for: word) == 0 {
-        return
-    }
-    
-    if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
-        return
-    }
-    
-    if !personality.auxy.contains(word) || personality.auxy.first == word {
-        return
-    }
-    
-    _ = keys.add(word: word)
-}
-
-func modernhal_babble(model: Model,
-                      context:Model.Context,
-                      personality: Personality,
-                      keys: Keywords,
-                      words: [STRING],
-                      used_key: Bool) -> (Int32, Bool)
-{
-    guard let node = context.longestAvailableContext() else {
-        return (0, used_key)
-    }
-    
-    if node.branch == 0 {
-        return (0, used_key)
-    }
-    
-    var i = Int(rnd(Int32(node.branch)))
-    var count = Int(rnd(Int32(node.usage)))
-    
-    var used_key = used_key
-    
-    var symbol : Int = 0
-    
-    while count >= 0 {
-        symbol = Int(node.tree[i].symbol)
-        
-        if ((keys.find(word: model.word(for: symbol)) != 0) &&
-            ((used_key == true) ||
-                (!personality.auxy.contains(model.word(for: symbol)) || personality.auxy.first == model.word(for: symbol))) &&
-            (words.contains(model.word(for: symbol)) == false))
-        {
-            used_key = true
-            break;
-        }
-        
-
-        count -= node.tree[i].count
-        
-        i = (i >= (node.branch - 1)) ? 0 : i + 1
-    }
-    
-    return (Int32(symbol), used_key)
-}
-
-func modernhal_seed(model: Model, context: Model.Context, personality: Personality, keys: Keywords) -> Int32 {
-    var symbol = 0
-    
-    if context.currentContext.branch == 0 {
-        symbol = 0
-    }
-    else {
-        symbol = Int(context.currentContext
-            .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
-            .symbol)
-    }
-    
-    if keys.size > 0 {
-        var i = Int(rnd(Int32(keys.size)))
-        let stop = i
-        
-        while true {
-            if (model.symbol(for: keys[i]) != 0) && (!personality.auxy.contains(keys[i]) || personality.auxy.first == keys[i])
-            {
-                return Int32(model.symbol(for: keys[i]))
-            }
-            
-            i += 1
-            
-            if i == keys.size {
-                i = 0
-            }
-            
-            if i == stop {
-                return Int32(symbol)
-            }
-        }
-    }
-    
-    return Int32(symbol)
-}
 
