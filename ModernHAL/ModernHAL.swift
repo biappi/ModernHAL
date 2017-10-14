@@ -666,4 +666,14 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
     return dictionary
 }
 
-
+class ModernHAL {
+    let personality : Personality
+    
+    init() {
+        personality = Personality()
+    }
+    
+    func reply(to sentence: String) -> String {
+        return personality.doReply(input: sentence)
+    }
+}

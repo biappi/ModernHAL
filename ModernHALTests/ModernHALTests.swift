@@ -158,9 +158,8 @@ class ModernHALTests: XCTestCase {
                 add_word(aux, STRING(b))
                 add_word(aux, STRING(c))
 
-                let p = Personality()
-                let second = p.doReply(input: string)
-
+                let m = ModernHAL()
+                let second = m.reply(to: string)
                 print(second)
                 
                 return first == second
