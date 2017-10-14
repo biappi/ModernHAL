@@ -377,52 +377,55 @@ class Personality<Element : WordElement> {
         
         for word in words {
             let toAdd = wordLists.swap[word] ?? [word]
-            toAdd.forEach { addKey(keys: keys, word: $0) }
+            toAdd.filter { shouldAddKey(word: $0) }
+                .forEach { _ = keys.add(word: $0) }
         }
         
         if keys.size > 0 {
             for word in words {
                 let toAdd = wordLists.swap[word] ?? [word]
-                toAdd.forEach { addAux(keys: keys, word: $0) }
+                toAdd.filter { shouldAddAux(word: $0) }
+                    .forEach { _ = keys.add(word: $0) }
             }
         }
         
         return keys
     }
     
-    func addKey(keys: Keywords, word: Element) {
+    func shouldAddKey(word: Element) -> Bool {
         if model.symbol(for: word) == 0 {
-            return
+            return false
         }
+        
         if !word.isFirstCharAlnum {
-            return
+            return false
         }
         
         if wordLists.ban.contains(word) {
-            return
+            return false
         }
         
         if wordLists.aux.contains(word) && wordLists.aux.first != word {
-            return
+            return false
         }
         
-        _ = keys.add(word: word)
+        return true
     }
     
-    func addAux(keys: Keywords, word: Element) {
+    func shouldAddAux(word: Element) -> Bool {
         if model.symbol(for: word) == 0 {
-            return
+            return false
         }
         
         if !word.isFirstCharAlnum {
-            return
+            return false
         }
         
         if !wordLists.aux.contains(word) || wordLists.aux.first == word {
-            return
+            return false
         }
         
-        _ = keys.add(word: word)
+        return true
     }
     
     func babble(context: Model<Element>.Context,
@@ -680,11 +683,11 @@ class ModernHAL {
                 aux:
                     (0 ..< Int(aux.pointee.size))
                         .map { aux.pointee.entry.advanced(by: $0).pointee }
-                        .map { $0.toString() },
+                        .map { $0.toString().uppercased() },
                 ban:
                     (0 ..< Int(ban.pointee.size))
                         .map { ban.pointee.entry.advanced(by: $0).pointee }
-                        .map { $0.toString() }
+                        .map { $0.toString().uppercased() }
             )
 
         personality = Personality(lists: lists, word: "<ERROR>", end: "<FIN>")
