@@ -8,17 +8,19 @@
 
 import Foundation
 
-class Model {
+class Model<Element>
+    where Element: Comparable & Copyable
+{
     var order = 5
     
-    private var dictionary = Keywords()
+    private var dictionary = SymbolCollection<Element>()
     
     private var forward  = Tree()
     private var backward = Tree()
     
-    init() {
-        _ = dictionary.add(word: _word)
-        _ = dictionary.add(word: _end)
+    init(word: Element, end: Element) {
+        _ = dictionary.add(word: word)
+        _ = dictionary.add(word: end)
     }
     
     func initializeForward() -> Context {
@@ -29,11 +31,11 @@ class Model {
         return Context(wrapping: self, initial: backward)
     }
     
-    func symbol(for word: STRING) -> Int {
+    func symbol(for word: Element) -> Int {
         return dictionary.find(word: word)
     }
     
-    func word(for symbol: Int) -> STRING {
+    func word(for symbol: Int) -> Element {
         return dictionary[Int(symbol)]
     }
     
@@ -51,7 +53,7 @@ class Model {
             return context.prefix(wrap.order).flatMap({ $0 })
         }
         
-        func updateContext(word: STRING) {
+        func updateContext(word: Element) {
             let symbol = wrap.dictionary.find(word: word)
             updateContext(symbol: symbol)
         }
@@ -64,7 +66,7 @@ class Model {
             }
         }
         
-        func updateModel(word: STRING) {
+        func updateModel(word: Element) {
             let symbol = wrap.dictionary.add(word: word)
             updateModel(symbol: symbol)
         }
@@ -251,13 +253,13 @@ class Tree
 }
 
 class Personality {
-    var model : Model
+    var model : Model<STRING>
     var swap : [STRING:[STRING]]
     var auxy : [STRING]
     var bann : [STRING]
     
     init() {
-        model = Model()
+        model = Model(word: _word, end: _end)
         
         swap = [STRING:[STRING]]()
         for i in 0 ..< Int(swp.pointee.size) {
@@ -439,7 +441,7 @@ class Personality {
         _ = keys.add(word: word)
     }
     
-    func babble(context: Model.Context,
+    func babble(context: Model<STRING>.Context,
                 keys: Keywords,
                 words: [STRING],
                 used_key: Bool) -> (Int32, Bool)
@@ -480,7 +482,7 @@ class Personality {
         return (Int32(symbol), used_key)
     }
     
-    func seed(context: Model.Context, keys: Keywords) -> Int32 {
+    func seed(context: Model<STRING>.Context, keys: Keywords) -> Int32 {
         var symbol = 0
         
         if context.currentContext.branch == 0 {
@@ -519,7 +521,7 @@ class Personality {
 }
 
 
-func modernhal_learn(model: Model, words: [STRING])
+func modernhal_learn(model: Model<STRING>, words: [STRING])
 {
     if words.count <= model.order {
         return
@@ -540,7 +542,7 @@ func modernhal_learn(model: Model, words: [STRING])
     }
 }
 
-func modernhal_evaluate_reply(model: Model,
+func modernhal_evaluate_reply(model: Model<STRING>,
                               keys:  Keywords,
                               words: [STRING])
     -> Float32
