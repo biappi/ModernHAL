@@ -650,16 +650,27 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
     return dictionary
 }
 
+extension String : WordElement {
+    var isFirstCharAlnum: Bool {
+        let firstCharacter = self.characters.first?.unicodeScalars.first
+        return firstCharacter.map (CharacterSet.alphanumerics.contains) ?? false
+    }
+    
+    func copy() -> String {
+        return self
+    }
+}
+
 class ModernHAL {
-    let personality : Personality<STRING>
+    let personality : Personality<String>
     
     init() {
-        var swap = [STRING:[STRING]]()
+        var swap = [String:[String]]()
         for i in 0 ..< Int(swp.pointee.size) {
-            let l = (from: swp.pointee.from.advanced(by: i).pointee,
-                     to:   swp.pointee.to.advanced(by: i).pointee)
+            let l = (from: swp.pointee.from.advanced(by: i).pointee.toString(),
+                     to:   swp.pointee.to.advanced(by: i).pointee.toString())
             
-            var d = swap[l.from] ?? [STRING]()
+            var d = swap[l.from] ?? [String]()
             d.append(l.to)
         }
         
@@ -668,21 +679,23 @@ class ModernHAL {
                 swap: swap,
                 aux:
                     (0 ..< Int(aux.pointee.size))
-                        .map { aux.pointee.entry.advanced(by: $0).pointee },
+                        .map { aux.pointee.entry.advanced(by: $0).pointee }
+                        .map { $0.toString() },
                 ban:
                     (0 ..< Int(ban.pointee.size))
                         .map { ban.pointee.entry.advanced(by: $0).pointee }
+                        .map { $0.toString() }
             )
 
-        personality = Personality(lists: lists, word: _word, end: _end)
+        personality = Personality(lists: lists, word: "<ERROR>", end: "<FIN>")
     }
     
     func reply(to sentence: String) -> String {
         return sentence.uppercased().withCString {
-            let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
+            let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0)).map { $0.toString() }
             
             let reply = personality.doReply(input: words)
-                .map { $0.map { $0.toString() }.joined() }
+                .map { $0.joined() }
                 ?? "I don't know enough to answer you yet!"
             
             let output = reply == "" ? "I am utterly speechless!" : reply
