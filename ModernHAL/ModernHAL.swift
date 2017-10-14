@@ -8,9 +8,11 @@
 
 import Foundation
 
-class Model<Element>
-    where Element: Comparable & Copyable
-{
+protocol WordElement : Comparable, Copyable, Hashable {
+    var isFirstCharAlnum : Bool { get }
+}
+
+class Model<Element : WordElement> {
     var order = 5
     
     private var dictionary = SymbolCollection<Element>()
@@ -160,8 +162,6 @@ class SymbolCollection<Element>
     }
 }
 
-typealias Keywords = SymbolCollection<STRING>
-
 extension STRING : Equatable { }
 
 public func ==(lhs: STRING, rhs: STRING) -> Bool {
@@ -188,6 +188,12 @@ extension STRING : Copyable {
         let w = UnsafeMutablePointer<Int8>.allocate(capacity: Int(self.length))
         memcpy(w, self.word, Int(self.length))
         return STRING(length: self.length, word: w)
+    }
+}
+
+extension STRING : WordElement {
+    var isFirstCharAlnum: Bool {
+        return isalnum(Int32(self.word.advanced(by: 0).pointee)) != 0
     }
 }
 
@@ -252,56 +258,31 @@ class Tree
     }
 }
 
-class Personality {
-    var model : Model<STRING>
-    var swap : [STRING:[STRING]]
-    var auxy : [STRING]
-    var bann : [STRING]
+struct PersonalityWords<Element : Hashable> {
+    var swap : [Element:[Element]]
+    var aux  : [Element]
+    var ban  : [Element]
+}
+
+class Personality<Element : WordElement> {
+    typealias Keywords = SymbolCollection<Element>
     
-    init() {
-        model = Model(word: _word, end: _end)
-        
-        swap = [STRING:[STRING]]()
-        for i in 0 ..< Int(swp.pointee.size) {
-            let l = (from: swp.pointee.from.advanced(by: i).pointee,
-                     to:   swp.pointee.to.advanced(by: i).pointee)
-            
-            var d = swap[l.from] ?? [STRING]()
-            d.append(l.to)
-        }
-        
-        auxy = (0 ..< Int(aux.pointee.size))
-            .map { aux.pointee.entry.advanced(by: $0).pointee }
-        
-        bann = (0 ..< Int(ban.pointee.size))
-            .map { ban.pointee.entry.advanced(by: $0).pointee }
+    var model : Model<Element>
+    var wordLists : PersonalityWords<Element>
+    
+    init(lists: PersonalityWords<Element>, word: Element, end: Element) {
+        model = Model(word: word, end: end)
+        wordLists = lists
     }
     
-    
-    func doReply(input: String) -> String {
-        
-        return input.uppercased().withCString {
-            let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
-            
-            modernhal_learn(model: model, words: words)
-            
-            let reply = generateReply(words: words)
-                .map { $0.map { $0.toString() }.joined() }
-                ?? "I don't know enough to answer you yet!"
-            
-            let output = reply == "" ? "I am utterly speechless!" : reply
-            
-            var outputData = output.data(using: .utf8)
-            outputData?.append(0)
-            outputData?.withUnsafeMutableBytes { capitalize($0) }
-            outputData!.remove(at: outputData!.count - 1)
-            return outputData.map { String(data: $0, encoding: .utf8)! }!
-        }
+    func doReply(input: [Element]) -> [Element]? {
+        modernhal_learn(model: model, words: input)
+        return generateReply(words: input)
     }
     
-    func generateReply(words: [STRING]) -> [STRING]?
+    func generateReply(words: [Element]) -> [Element]?
     {
-        var output   = nil as [STRING]?
+        var output   = nil as [Element]?
         let keywords = makeKeywords(words: words)
         
         var replywords = reply(keys: Keywords())
@@ -316,9 +297,9 @@ class Personality {
         
         for _ in 0 ..< 10 {
             replywords = reply(keys: keywords)
-            let surprise = modernhal_evaluate_reply(model: model,
-                                                    keys: keywords,
-                                                    words: replywords)
+            let surprise = evaluateReply(model: model,
+                                         keys: keywords,
+                                         words: replywords)
             
             count += 1
             
@@ -331,9 +312,9 @@ class Personality {
         return output
     }
     
-    func reply(keys: Keywords) -> [STRING]
+    func reply(keys: Keywords) -> [Element]
     {
-        var replies = [STRING]()
+        var replies = [Element]()
         
         let forwardContext = model.initializeForward()
         
@@ -391,17 +372,17 @@ class Personality {
         return replies
     }
     
-    func makeKeywords(words: [STRING]) -> Keywords {
+    func makeKeywords(words: [Element]) -> Keywords {
         let keys = Keywords()
         
         for word in words {
-            let toAdd = swap[word] ?? [word]
+            let toAdd = wordLists.swap[word] ?? [word]
             toAdd.forEach { addKey(keys: keys, word: $0) }
         }
         
         if keys.size > 0 {
             for word in words {
-                let toAdd = swap[word] ?? [word]
+                let toAdd = wordLists.swap[word] ?? [word]
                 toAdd.forEach { addAux(keys: keys, word: $0) }
             }
         }
@@ -409,45 +390,44 @@ class Personality {
         return keys
     }
     
-    func addKey(keys: Keywords, word: STRING) {
+    func addKey(keys: Keywords, word: Element) {
         if model.symbol(for: word) == 0 {
             return
         }
-        
-        if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
+        if !word.isFirstCharAlnum {
             return
         }
         
-        if bann.contains(word) {
+        if wordLists.ban.contains(word) {
             return
         }
         
-        if auxy.contains(word) && auxy.first != word {
+        if wordLists.aux.contains(word) && wordLists.aux.first != word {
             return
         }
         
         _ = keys.add(word: word)
     }
     
-    func addAux(keys: Keywords, word: STRING) {
+    func addAux(keys: Keywords, word: Element) {
         if model.symbol(for: word) == 0 {
             return
         }
         
-        if isalnum(Int32(word.word.advanced(by: 0).pointee)) == 0 {
+        if !word.isFirstCharAlnum {
             return
         }
         
-        if !auxy.contains(word) || auxy.first == word {
+        if !wordLists.aux.contains(word) || wordLists.aux.first == word {
             return
         }
         
         _ = keys.add(word: word)
     }
     
-    func babble(context: Model<STRING>.Context,
+    func babble(context: Model<Element>.Context,
                 keys: Keywords,
-                words: [STRING],
+                words: [Element],
                 used_key: Bool) -> (Int32, Bool)
     {
         guard let node = context.longestAvailableContext() else {
@@ -470,7 +450,7 @@ class Personality {
             
             if ((keys.find(word: model.word(for: symbol)) != 0) &&
                 ((used_key == true) ||
-                    (!auxy.contains(model.word(for: symbol)) || auxy.first == model.word(for: symbol))) &&
+                    (!wordLists.aux.contains(model.word(for: symbol)) || wordLists.aux.first == model.word(for: symbol))) &&
                 (words.contains(model.word(for: symbol)) == false))
             {
                 used_key = true
@@ -486,7 +466,7 @@ class Personality {
         return (Int32(symbol), used_key)
     }
     
-    func seed(context: Model<STRING>.Context, keys: Keywords) -> Int32 {
+    func seed(context: Model<Element>.Context, keys: Keywords) -> Int32 {
         var symbol = 0
         
         if context.currentContext.branch == 0 {
@@ -503,7 +483,7 @@ class Personality {
             let stop = i
             
             while true {
-                if (model.symbol(for: keys[i]) != 0) && (!auxy.contains(keys[i]) || auxy.first == keys[i])
+                if (model.symbol(for: keys[i]) != 0) && (!wordLists.aux.contains(keys[i]) || wordLists.aux.first == keys[i])
                 {
                     return Int32(model.symbol(for: keys[i]))
                 }
@@ -522,10 +502,80 @@ class Personality {
         
         return Int32(symbol)
     }
+    
+    func evaluateReply(model: Model<Element>,
+                       keys:  Keywords,
+                       words: [Element])
+        -> Float32
+    {
+        var num = 0
+        var entropy : Float32 = 0
+        
+        let forwardContext = model.initializeForward()
+        
+        for word in words {
+            let symbol = model.symbol(for: word)
+            
+            if keys.find(word: word) != 0 {
+                var probability : Float32 = 0
+                var count       : Int = 0
+                
+                num += 1
+                
+                for context in forwardContext.activeContexts() {
+                    let node = context.find(symbol: symbol)!
+                    probability += Float32(node.count) / Float32(context.usage)
+                    count += 1
+                }
+                
+                if count > 0 {
+                    entropy -= Float32(log(Double(probability / Float32(count))))
+                }
+            }
+            
+            forwardContext.updateContext(symbol: symbol)
+        }
+        
+        
+        let backwardContext = model.initializeBackward()
+        
+        for word in words.lazy.reversed() {
+            let symbol = model.symbol(for: word)
+            
+            if keys.find(word: word) != 0 {
+                var probability : Float = 0
+                var count       : Float = 0
+                
+                num += 1
+                
+                for context in backwardContext.activeContexts() {
+                    let node = context.find(symbol: symbol)!
+                    probability += Float32(node.count) / Float32(context.usage)
+                    count += 1
+                }
+                
+                if count > 0 {
+                    entropy -= Float32(log(Double(probability / Float32(count))))
+                }
+            }
+            
+            backwardContext.updateContext(symbol: symbol)
+        }
+        
+        if num >= 8 {
+            entropy /= Float32(sqrt(Double(num - 1)))
+        }
+        
+        if num >= 16 {
+            entropy /= Float32(num)
+        }
+        
+        return entropy
+    }
 }
 
 
-func modernhal_learn(model: Model<STRING>, words: [STRING])
+func modernhal_learn<Element>(model: Model<Element>, words: [Element])
 {
     if words.count <= model.order {
         return
@@ -544,76 +594,6 @@ func modernhal_learn(model: Model<STRING>, words: [STRING])
         words.lazy.reversed().forEach { backwardContext.updateModel(word: $0) }
         backwardContext.updateModel(symbol: 1)
     }
-}
-
-func modernhal_evaluate_reply(model: Model<STRING>,
-                              keys:  Keywords,
-                              words: [STRING])
-    -> Float32
-{
-    var num = 0
-    var entropy : Float32 = 0
-    
-    let forwardContext = model.initializeForward()
-    
-    for word in words {
-        let symbol = model.symbol(for: word)
-        
-        if keys.find(word: word) != 0 {
-            var probability : Float32 = 0
-            var count       : Int = 0
-            
-            num += 1
-            
-            for context in forwardContext.activeContexts() {
-                let node = context.find(symbol: symbol)!
-                probability += Float32(node.count) / Float32(context.usage)
-                count += 1
-            }
-            
-            if count > 0 {
-                entropy -= Float32(log(Double(probability / Float32(count))))
-            }
-        }
-        
-        forwardContext.updateContext(symbol: symbol)
-    }
-    
-    
-    let backwardContext = model.initializeBackward()
-    
-    for word in words.lazy.reversed() {
-        let symbol = model.symbol(for: word)
-        
-        if keys.find(word: word) != 0 {
-            var probability : Float = 0
-            var count       : Float = 0
-            
-            num += 1
-            
-            for context in backwardContext.activeContexts() {
-                let node = context.find(symbol: symbol)!
-                probability += Float32(node.count) / Float32(context.usage)
-                count += 1
-            }
-            
-            if count > 0 {
-                entropy -= Float32(log(Double(probability / Float32(count))))
-            }
-        }
-        
-        backwardContext.updateContext(symbol: symbol)
-    }
-    
-    if num >= 8 {
-        entropy /= Float32(sqrt(Double(num - 1)))
-    }
-    
-    if num >= 16 {
-        entropy /= Float32(num)
-    }
-
-    return entropy
 }
 
 var dot : STRING = {
@@ -671,13 +651,48 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
 }
 
 class ModernHAL {
-    let personality : Personality
+    let personality : Personality<STRING>
     
     init() {
-        personality = Personality()
+        var swap = [STRING:[STRING]]()
+        for i in 0 ..< Int(swp.pointee.size) {
+            let l = (from: swp.pointee.from.advanced(by: i).pointee,
+                     to:   swp.pointee.to.advanced(by: i).pointee)
+            
+            var d = swap[l.from] ?? [STRING]()
+            d.append(l.to)
+        }
+        
+        let lists =
+            PersonalityWords(
+                swap: swap,
+                aux:
+                    (0 ..< Int(aux.pointee.size))
+                        .map { aux.pointee.entry.advanced(by: $0).pointee },
+                ban:
+                    (0 ..< Int(ban.pointee.size))
+                        .map { ban.pointee.entry.advanced(by: $0).pointee }
+            )
+
+        personality = Personality(lists: lists, word: _word, end: _end)
     }
     
     func reply(to sentence: String) -> String {
-        return personality.doReply(input: sentence)
+        return sentence.uppercased().withCString {
+            let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
+            
+            let reply = personality.doReply(input: words)
+                .map { $0.map { $0.toString() }.joined() }
+                ?? "I don't know enough to answer you yet!"
+            
+            let output = reply == "" ? "I am utterly speechless!" : reply
+            
+            var outputData = output.data(using: .utf8)
+            outputData?.append(0)
+            outputData?.withUnsafeMutableBytes { capitalize($0) }
+            outputData!.remove(at: outputData!.count - 1)
+            return outputData.map { String(data: $0, encoding: .utf8)! }!
+        }
+        
     }
 }
