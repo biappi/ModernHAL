@@ -285,7 +285,11 @@ class Personality {
             
             modernhal_learn(model: model, words: words)
             
-            let output = generateReply(words: words)
+            let reply = generateReply(words: words)
+                .map { $0.map { $0.toString() }.joined() }
+                ?? "I don't know enough to answer you yet!"
+            
+            let output = reply == "" ? "I am utterly speechless!" : reply
             
             var outputData = output.data(using: .utf8)
             outputData?.append(0)
@@ -295,16 +299,16 @@ class Personality {
         }
     }
     
-    func generateReply(words: [STRING]) -> String
+    func generateReply(words: [STRING]) -> [STRING]?
     {
-        var output   = "I don't know enough to answer you yet!"
+        var output   = nil as [STRING]?
         let keywords = makeKeywords(words: words)
         
         var replywords = reply(keys: Keywords())
         
         
         if words != replywords {
-            output = replywords.map { $0.toString() }.joined()
+            output = replywords
         }
         
         var count = 0
@@ -320,11 +324,11 @@ class Personality {
             
             if surprise > maxSurprise && (words != replywords) {
                 maxSurprise = surprise
-                output = replywords.map { $0.toString() }.joined()
+                output = replywords
             }
         }
         
-        return output == "" ? "I am utterly speechless!" : output
+        return output
     }
     
     func reply(keys: Keywords) -> [STRING]
