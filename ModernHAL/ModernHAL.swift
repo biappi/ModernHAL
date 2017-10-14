@@ -93,29 +93,32 @@ class Model {
     }
 }
 
-class Keywords {
+protocol Copyable {
+    func copy() -> Self
+}
+
+class SymbolCollection<Element>
+    where Element: Copyable & Comparable
+{
     var size : Int { return entries.count }
     
     var indices = [Int]()
-    var entries = [STRING]()
+    var entries = [Element]()
     
-    func add(word: STRING) -> Int {
+    func add(word: Element) -> Int {
         let (position, found) = search(word: word)
         if found {
             return indices[position]
         }
         
-        let w = UnsafeMutablePointer<Int8>.allocate(capacity: Int(word.length))
-        memcpy(w, word.word, Int(word.length))
-        
         let newSymbol = entries.count
-        entries.append(STRING(length: word.length, word: w))
+        entries.append(word.copy())
         indices.insert(newSymbol, at: position)
         
         return indices[position]
     }
     
-    func search(word: STRING) -> (position: Int, found: Bool) {
+    func search(word: Element) -> (position: Int, found: Bool) {
         if size == 0 {
             return (0, false)
         }
@@ -125,13 +128,12 @@ class Keywords {
         
         while true {
             let middle = (min + max) / 2
+            let middleWord = self[indices[middle]]
             
-            let c = wordcmp(word, self[indices[middle]])
-            
-            if c == 0 {
+            if word == middleWord {
                 return (middle, true)
             }
-            else if c > 0 {
+            else if word > middleWord {
                 if max == middle {
                     return (middle + 1, false)
                 }
@@ -146,15 +148,17 @@ class Keywords {
         }
     }
     
-    func find(word: STRING) -> Int {
+    func find(word: Element) -> Int {
         let (position, found) = search(word: word)
         return found ? indices[position] : 0
     }
         
-    subscript(i: Int) -> STRING {
+    subscript(i: Int) -> Element {
         return self.entries[i]
     }
 }
+
+typealias Keywords = SymbolCollection<STRING>
 
 extension STRING : Equatable { }
 
@@ -169,6 +173,20 @@ extension STRING : Hashable {
     }
     
     public var hashValue: Int { return self.toString().hashValue}
+}
+
+extension STRING : Comparable {
+    public static func <(lhs: STRING, rhs: STRING) -> Bool {
+        return wordcmp(lhs, rhs) < 0
+    }
+}
+
+extension STRING : Copyable {
+    func copy() -> STRING {
+        let w = UnsafeMutablePointer<Int8>.allocate(capacity: Int(self.length))
+        memcpy(w, self.word, Int(self.length))
+        return STRING(length: self.length, word: w)
+    }
 }
 
 class Tree
@@ -366,6 +384,7 @@ class Personality {
         
         return replies
     }
+    
     func makeKeywords(words: [STRING]) -> Keywords {
         let keys = Keywords()
         
