@@ -283,10 +283,11 @@ class Personality<Element : WordElement> {
     func generateReply(words: [Element]) -> [Element]?
     {
         var output   = nil as [Element]?
-        let keywords = makeKeywords(words: words)
+        
+        let keywords = Keywords()
+        makeKeywords(words: words).forEach { _ = keywords.add(word: $0)}
         
         var replywords = reply(keys: Keywords())
-        
         
         if words != replywords {
             output = replywords
@@ -372,24 +373,17 @@ class Personality<Element : WordElement> {
         return replies
     }
     
-    func makeKeywords(words: [Element]) -> Keywords {
-        let keys = Keywords()
+    func makeKeywords(words: [Element]) -> [Element] {
+        let swappedWords = words.flatMap { wordLists.swap[$0] ?? [$0] }
+        let keywords     = swappedWords.filter { shouldAddKey(word: $0) }
         
-        for word in words {
-            let toAdd = wordLists.swap[word] ?? [word]
-            toAdd.filter { shouldAddKey(word: $0) }
-                .forEach { _ = keys.add(word: $0) }
+        if keywords.count > 0 {
+            let auxWords = swappedWords.filter { shouldAddAux(word: $0) }
+            return keywords + auxWords
         }
-        
-        if keys.size > 0 {
-            for word in words {
-                let toAdd = wordLists.swap[word] ?? [word]
-                toAdd.filter { shouldAddAux(word: $0) }
-                    .forEach { _ = keys.add(word: $0) }
-            }
+        else {
+            return []
         }
-        
-        return keys
     }
     
     func shouldAddKey(word: Element) -> Bool {
