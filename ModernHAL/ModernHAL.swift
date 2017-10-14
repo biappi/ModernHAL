@@ -282,7 +282,7 @@ class Personality<Element : WordElement> {
     }
     
     func doReply(input: [Element]) -> [Element]? {
-        modernhal_learn(model: model, words: input)
+        learn(words: input)
         return generateReply(words: input)
     }
     
@@ -575,27 +575,26 @@ class Personality<Element : WordElement> {
         
         return entropy
     }
-}
-
-
-func modernhal_learn<Element>(model: Model<Element>, words: [Element])
-{
-    if words.count <= model.order {
-        return
-    }
     
-    do {
-        // Forward training
-        let forwardContext = model.initializeForward()
-        words.forEach { forwardContext.updateModel(word: $0) }
-        forwardContext.updateModel(symbol: 1)
-    }
-    
-    do {
-        // Backwards training
-        let backwardContext = model.initializeBackward()
-        words.lazy.reversed().forEach { backwardContext.updateModel(word: $0) }
-        backwardContext.updateModel(symbol: 1)
+    func learn(words: [Element])
+    {
+        if words.count <= model.order {
+            return
+        }
+        
+        do {
+            // Forward training
+            let forwardContext = model.initializeForward()
+            words.forEach { forwardContext.updateModel(word: $0) }
+            forwardContext.updateModel(symbol: 1)
+        }
+        
+        do {
+            // Backwards training
+            let backwardContext = model.initializeBackward()
+            words.lazy.reversed().forEach { backwardContext.updateModel(word: $0) }
+            backwardContext.updateModel(symbol: 1)
+        }
     }
 }
 
