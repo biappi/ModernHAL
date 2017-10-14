@@ -12,13 +12,15 @@ protocol WordElement : Comparable, Copyable, Hashable {
     var isFirstCharAlnum : Bool { get }
 }
 
-class Model<Element : WordElement> {
+class Model<Element>
+    where Element : WordElement
+{
     var order = 5
     
     private var dictionary = SymbolCollection<Element>()
     
-    private var forward  = Tree()
-    private var backward = Tree()
+    private var forward  = Tree<Int>(symbol: 0)
+    private var backward = Tree<Int>(symbol: 0)
     
     init(word: Element, end: Element) {
         _ = dictionary.add(word: word)
@@ -42,16 +44,16 @@ class Model<Element : WordElement> {
     }
     
     class Context {
-        private var context: [Tree?]
+        private var context: [Tree<Int>?]
         private let wrap : Model
         
-        internal init(wrapping: Model, initial: Tree) {
+        internal init(wrapping: Model, initial: Tree<Int>) {
             wrap = wrapping
             context = [Tree?](repeating:nil, count: Int(wrapping.order + 2))
             context[0] = initial
         }
         
-        func activeContexts() -> [Tree] {
+        func activeContexts() -> [Tree<Int>] {
             return context.prefix(wrap.order).flatMap({ $0 })
         }
         
@@ -81,8 +83,8 @@ class Model<Element : WordElement> {
             }
         }
         
-        func longestAvailableContext() -> Tree? {
-            var node : Tree?
+        func longestAvailableContext() -> Tree<Int>? {
+            var node : Tree<Int>?
             
             for  i in 0 ..< wrap.order + 1 {
                 if let c = context[i] {
@@ -93,7 +95,7 @@ class Model<Element : WordElement> {
             return node
         }
         
-        var currentContext : Tree { return context[0]! }
+        var currentContext : Tree<Int> { return context[0]! }
     }
 }
 
@@ -197,20 +199,25 @@ extension STRING : WordElement {
     }
 }
 
-class Tree
+class Tree <Symbol>
+    where Symbol: Comparable
 {
-    var symbol : Int    = 0
+    var symbol : Symbol
     var usage  : Int    = 0
     var branch : Int    { return tree.count }
     var count  : Int    = 0
     var tree   : [Tree] = []
     
-    func find(symbol: Int) -> Tree? {
+    init(symbol: Symbol) {
+        self.symbol = symbol
+    }
+    
+    func find(symbol: Symbol) -> Tree? {
         let (pos, found) = search(symbol: symbol)
         return found ? tree[pos] : nil
     }
     
-    func add(symbol: Int) -> Tree {
+    func add(symbol: Symbol) -> Tree {
         let (pos, found) = search(symbol: symbol)
         let node : Tree
         
@@ -218,8 +225,7 @@ class Tree
             node = tree[pos]
         }
         else {
-            node = Tree()
-            node.symbol = symbol
+            node = Tree(symbol: symbol)
             tree.insert(node, at: pos)
         }
         
@@ -230,7 +236,7 @@ class Tree
     }
     
     
-    private func search(symbol: Int) -> (pos: Int, found: Bool) {
+    private func search(symbol: Symbol) -> (pos: Int, found: Bool) {
         if tree.count == 0 {
             return (0, false)
         }
@@ -241,16 +247,16 @@ class Tree
         
         while true {
             middle = (min + max) / 2
-            let compar = symbol - tree[middle].symbol
+            let middleSymbol = tree[middle].symbol
             
-            if compar == 0 {
+            if symbol == middleSymbol {
                 return (middle, true)
             }
-            else if compar > 0 {
+            else if symbol > middleSymbol {
                 if max == middle { return (middle + 1, false)  }
                 min = middle + 1
             }
-            else if compar < 0 {
+            else if symbol < middleSymbol {
                 if min == middle { return (middle, false) }
                 max = middle - 1
             }
