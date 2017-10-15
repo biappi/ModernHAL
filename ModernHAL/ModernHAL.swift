@@ -75,6 +75,10 @@ class Model<Element, SymbolType>
         }
         
         var currentContext : Tree<SymbolType> { return context[0]! }
+        
+        func learn(symbols: [SymbolType]) {
+            symbols.forEach { self.updateModel(symbol: $0) }
+        }
     }
 }
 
@@ -596,27 +600,11 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     
     func learn(words: [Element])
     {
-        if words.count <= model.order {
-            return
-        }
-        
-        let symbols = words.map { self.dictionary.add(word: $0) }
-        
-        do {
-            // Forward training
-            let forwardContext = model.initializeForward()
-            let symbols = symbols + [1]
-            
-            symbols.forEach { forwardContext.updateModel(symbol: $0)}
-        }
-        
-        do {
-            // Backwards training
-            let backwardContext = model.initializeBackward()
-            let symbols = symbols.reversed() + [1]
+        guard words.count > model.order else { return }
 
-            symbols.forEach { backwardContext.updateModel(symbol: $0)}
-        }
+        let symbols = words.map { self.dictionary.add(word: $0) }
+        model.initializeForward().learn(symbols: symbols + [1])
+        model.initializeBackward().learn(symbols: symbols.reversed() + [1])
     }
 }
 
