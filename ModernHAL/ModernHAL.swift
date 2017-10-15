@@ -12,13 +12,17 @@ protocol WordElement : Comparable, Copyable, Hashable {
     var isFirstCharAlnum : Bool { get }
 }
 
-class Model<Element>
-    where Element : WordElement
+protocol Symbol : Comparable {
+    static var initial : Self { get }
+}
+
+class Model<Element, SymbolType>
+    where Element : WordElement, SymbolType : Symbol
 {
     var order = 5
     
-    private var forward  = Tree<Int>(symbol: 0)
-    private var backward = Tree<Int>(symbol: 0)
+    private var forward  = Tree<SymbolType>(symbol: SymbolType.initial)
+    private var backward = Tree<SymbolType>(symbol: SymbolType.initial)
     
     func initializeForward() -> Context {
         return Context(wrapping: self, initial: forward)
@@ -29,20 +33,20 @@ class Model<Element>
     }
     
     class Context {
-        private var context: [Tree<Int>?]
+        private var context: [Tree<SymbolType>?]
         private let wrap : Model
         
-        internal init(wrapping: Model, initial: Tree<Int>) {
+        internal init(wrapping: Model, initial: Tree<SymbolType>) {
             wrap = wrapping
             context = [Tree?](repeating:nil, count: Int(wrapping.order + 2))
             context[0] = initial
         }
         
-        func activeContexts() -> [Tree<Int>] {
+        func activeContexts() -> [Tree<SymbolType>] {
             return context.prefix(wrap.order).flatMap({ $0 })
         }
         
-        func updateContext(symbol: Int) {
+        func updateContext(symbol: SymbolType) {
             for i in (1 ..< (wrap.order + 2)).reversed() {
                 if context[i - 1] != nil {
                     context[i] = context[i - 1]?.find(symbol: symbol)
@@ -50,7 +54,7 @@ class Model<Element>
             }
         }
         
-        func updateModel(symbol: Int) {
+        func updateModel(symbol: SymbolType) {
             for i in (1 ..< Int(wrap.order + 2)).reversed() {
                 if context[i - 1] != nil {
                     context[i] = context[i - 1]?.add(symbol:symbol)
@@ -58,8 +62,8 @@ class Model<Element>
             }
         }
         
-        func longestAvailableContext() -> Tree<Int>? {
-            var node : Tree<Int>?
+        func longestAvailableContext() -> Tree<SymbolType>? {
+            var node : Tree<SymbolType>?
             
             for  i in 0 ..< wrap.order + 1 {
                 if let c = context[i] {
@@ -70,7 +74,7 @@ class Model<Element>
             return node
         }
         
-        var currentContext : Tree<Int> { return context[0]! }
+        var currentContext : Tree<SymbolType> { return context[0]! }
     }
 }
 
@@ -245,11 +249,17 @@ struct PersonalityWords<Element : Hashable> {
     var ban  : [Element]
 }
 
+extension Int : Symbol {
+    static var initial: Int {
+        return 0
+    }
+}
+
 class Personality<Element : WordElement> {
     typealias Keywords = SymbolCollection<Element>
     
     var dictionary : SymbolCollection<Element>
-    var model      : Model<Element>
+    var model      : Model<Element, Int>
     var wordLists  : PersonalityWords<Element>
     
 
@@ -418,7 +428,7 @@ class Personality<Element : WordElement> {
         return true
     }
     
-    func babble(context: Model<Element>.Context,
+    func babble(context: Model<Element, Int>.Context,
                 keys: Keywords,
                 words: [Element],
                 used_key: Bool) -> (Int32, Bool)
@@ -459,7 +469,7 @@ class Personality<Element : WordElement> {
         return (Int32(symbol), used_key)
     }
     
-    func seed(context: Model<Element>.Context, keys: Keywords) -> Int32 {
+    func seed(context: Model<Element, Int>.Context, keys: Keywords) -> Int32 {
         var symbol = 0
         
         if context.currentContext.branch == 0 {
@@ -496,7 +506,7 @@ class Personality<Element : WordElement> {
         return Int32(symbol)
     }
     
-    func evaluateReply(model: Model<Element>,
+    func evaluateReply(model: Model<Element, Int>,
                        keys:  Keywords,
                        words: [Element])
         -> Float32
