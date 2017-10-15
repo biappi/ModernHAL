@@ -289,15 +289,12 @@ protocol SymbolStore {
 class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     where SymbolDictionary.Element == Element, SymbolDictionary.Symbol == Int
 {
-    typealias Keywords = SymbolCollection<Element>
-    
     var dictionary : SymbolDictionary
     var model      : Model<Element, Int>
     var wordLists  : PersonalityWords<Element>
     
 
     init(lists: PersonalityWords<Element>, word: Element, end: Element) {
-        
         dictionary = SymbolDictionary()
         
         _ = dictionary.add(word: word)
@@ -316,10 +313,9 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     {
         var output   = nil as [Element]?
         
-        let keywords = Keywords()
-        makeKeywords(words: words).forEach { _ = keywords.add(word: $0)}
+        let keywords = makeKeywords(words: words).deduplicated()
         
-        var replywords = reply(keys: Keywords())
+        var replywords = reply(keys: [])
         
         if words != replywords {
             output = replywords
@@ -345,7 +341,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         return output
     }
     
-    func reply(keys: Keywords) -> [Element]
+    func reply(keys: [Element]) -> [Element]
     {
         var replies = [Element]()
         
@@ -455,7 +451,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     }
     
     func babble(context: Model<Element, Int>.Context,
-                keys: Keywords,
+                keys: [Element],
                 words: [Element],
                 used_key: Bool) -> (Int32, Bool)
     {
@@ -478,7 +474,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             symbol = Int(node.tree[i].symbol)
             
             if ((keys.contains(dictionary.word(for: symbol))) &&
-            (dictionary.word(for: symbol) != keys.entries.first) &&
+                (dictionary.word(for: symbol) != keys.first) &&
                 ((used_key == true) ||
                     (!wordLists.aux.contains(dictionary.word(for: symbol)) || wordLists.aux.first == dictionary.word(for: symbol))) &&
                 (words.contains(dictionary.word(for: symbol)) == false))
@@ -496,7 +492,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         return (Int32(symbol), used_key)
     }
     
-    func seed(context: Model<Element, Int>.Context, keys: Keywords) -> Int32 {
+    func seed(context: Model<Element, Int>.Context, keys: [Element]) -> Int32 {
         var symbol = 0
         
         if context.currentContext.branch == 0 {
@@ -508,8 +504,8 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                 .symbol)
         }
         
-        if keys.size > 0 {
-            var i = Int(rnd(Int32(keys.size)))
+        if keys.count > 0 {
+            var i = Int(rnd(Int32(keys.count)))
             let stop = i
             
             while true {
@@ -520,7 +516,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                 
                 i += 1
         
-                if i == keys.size {
+                if i == keys.count {
                     i = 0
                 }
                 
@@ -534,7 +530,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     }
     
     func evaluateReply(model: Model<Element, Int>,
-                       keys:  Keywords,
+                       keys:  [Element],
                        words: [Element])
         -> Float32
     {
@@ -546,7 +542,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         for word in words {
             let symbol = dictionary.symbol(for: word)
             
-            if keys.contains(word) && (word != keys.entries.first) {
+            if keys.contains(word) && (word != keys.first) {
                 var probability : Float32 = 0
                 var count       : Int = 0
                 
@@ -572,7 +568,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         for word in words.lazy.reversed() {
             let symbol = dictionary.symbol(for: word)
             
-            if keys.contains(word) && (word != keys.entries.first) {
+            if keys.contains(word) && (word != keys.first) {
                 var probability : Float = 0
                 var count       : Float = 0
                 
@@ -724,5 +720,16 @@ class ModernHAL {
             return outputData.map { String(data: $0, encoding: .utf8)! }!
         }
         
+    }
+}
+
+extension Array where Element : Equatable
+{
+    func deduplicated() -> Array<Element> {
+        return reduce(into: Array<Element>()) {
+            if !$0.contains($1) {
+                $0.append($1)
+            }
+        }
     }
 }
