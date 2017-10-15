@@ -600,12 +600,12 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             return
         }
         
-        words.forEach { _ = self.dictionary.add(word: $0) }
+        let symbols = words.map { self.dictionary.add(word: $0) }
         
         do {
             // Forward training
             let forwardContext = model.initializeForward()
-            let symbols = words.map { dictionary.symbol(for: $0) } + [1]
+            let symbols = symbols + [1]
             
             symbols.forEach { forwardContext.updateModel(symbol: $0)}
         }
@@ -613,7 +613,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         do {
             // Backwards training
             let backwardContext = model.initializeBackward()
-            let symbols = words.reversed().map { dictionary.symbol(for: $0) } + [1]
+            let symbols = symbols.reversed() + [1]
 
             symbols.forEach { backwardContext.updateModel(symbol: $0)}
         }
