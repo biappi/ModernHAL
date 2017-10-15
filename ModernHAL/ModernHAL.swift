@@ -43,35 +43,20 @@ class Model<Element, SymbolType>
         }
         
         func activeContexts() -> [Tree<SymbolType>] {
-            return context.prefix(wrap.order).flatMap({ $0 })
+            return context.dropLast(2).flatMap { $0 }
         }
         
         func updateContext(symbol: SymbolType) {
-            for i in (1 ..< (wrap.order + 2)).reversed() {
-                if context[i - 1] != nil {
-                    context[i] = context[i - 1]?.find(symbol: symbol)
-                }
-            }
+            context = [context.first!] + context.dropLast().map { $0?.find(symbol: symbol) }
         }
         
-        func updateModel(symbol: SymbolType) {
-            for i in (1 ..< Int(wrap.order + 2)).reversed() {
-                if context[i - 1] != nil {
-                    context[i] = context[i - 1]?.add(symbol:symbol)
-                }
-            }
+        private func updateModel(symbol: SymbolType) {
+            context.dropLast().forEach { _ = $0?.add(symbol: symbol) }
+            context = [context.first!] + context.dropLast().map { $0?.find(symbol: symbol) }
         }
         
         func longestAvailableContext() -> Tree<SymbolType>? {
-            var node : Tree<SymbolType>?
-            
-            for  i in 0 ..< wrap.order + 1 {
-                if let c = context[i] {
-                    node = c
-                }
-            }
-            
-            return node
+            return context.dropLast().flatMap { $0 }.last
         }
         
         var currentContext : Tree<SymbolType> { return context[0]! }
