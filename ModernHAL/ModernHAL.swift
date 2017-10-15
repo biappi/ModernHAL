@@ -157,8 +157,8 @@ class SymbolCollection<Element> : SymbolStore
         return self.entries[i]
     }
     
-    func buggyContains(_ word: Element) -> Bool {
-        return entries.first != word && find(word: word) != nil
+    func contains(_ word: Element) -> Bool {
+        return find(word: word) != nil
     }
 }
 
@@ -477,7 +477,8 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         while count >= 0 {
             symbol = Int(node.tree[i].symbol)
             
-            if ((keys.buggyContains(dictionary.word(for: symbol))) &&
+            if ((keys.contains(dictionary.word(for: symbol))) &&
+            (dictionary.word(for: symbol) != keys.entries.first) &&
                 ((used_key == true) ||
                     (!wordLists.aux.contains(dictionary.word(for: symbol)) || wordLists.aux.first == dictionary.word(for: symbol))) &&
                 (words.contains(dictionary.word(for: symbol)) == false))
@@ -545,7 +546,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         for word in words {
             let symbol = dictionary.symbol(for: word)
             
-            if keys.buggyContains(word) {
+            if keys.contains(word) && (word != keys.entries.first) {
                 var probability : Float32 = 0
                 var count       : Int = 0
                 
@@ -571,7 +572,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         for word in words.lazy.reversed() {
             let symbol = dictionary.symbol(for: word)
             
-            if keys.buggyContains(word) {
+            if keys.contains(word) && (word != keys.entries.first) {
                 var probability : Float = 0
                 var count       : Float = 0
                 
