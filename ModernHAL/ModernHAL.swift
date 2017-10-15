@@ -111,7 +111,7 @@ class SymbolCollection<Element> : SymbolStore
     }
 
     func symbol(for word: Element) -> Int {
-        return find(word: word)
+        return find(word: word) ?? 0
     }
     
     func word(for symbol: Int) -> Element {
@@ -148,13 +148,17 @@ class SymbolCollection<Element> : SymbolStore
         }
     }
     
-    func find(word: Element) -> Int {
+    private func find(word: Element) -> Int? {
         let (position, found) = search(word: word)
-        return found ? indices[position] : 0
+        return found ? indices[position] : nil
     }
-        
+    
     subscript(i: Int) -> Element {
         return self.entries[i]
+    }
+    
+    func buggyContains(_ word: Element) -> Bool {
+        return entries.first != word && find(word: word) != nil
     }
 }
 
@@ -473,7 +477,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         while count >= 0 {
             symbol = Int(node.tree[i].symbol)
             
-            if ((keys.find(word: dictionary.word(for: symbol)) != 0) &&
+            if ((keys.buggyContains(dictionary.word(for: symbol))) &&
                 ((used_key == true) ||
                     (!wordLists.aux.contains(dictionary.word(for: symbol)) || wordLists.aux.first == dictionary.word(for: symbol))) &&
                 (words.contains(dictionary.word(for: symbol)) == false))
@@ -541,7 +545,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         for word in words {
             let symbol = dictionary.symbol(for: word)
             
-            if keys.find(word: word) != 0 {
+            if keys.buggyContains(word) {
                 var probability : Float32 = 0
                 var count       : Int = 0
                 
@@ -567,7 +571,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         for word in words.lazy.reversed() {
             let symbol = dictionary.symbol(for: word)
             
-            if keys.find(word: word) != 0 {
+            if keys.buggyContains(word) {
                 var probability : Float = 0
                 var count       : Float = 0
                 
