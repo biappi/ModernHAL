@@ -17,15 +17,8 @@ class Model<Element>
 {
     var order = 5
     
-    private var dictionary = SymbolCollection<Element>()
-    
     private var forward  = Tree<Int>(symbol: 0)
     private var backward = Tree<Int>(symbol: 0)
-    
-    init(word: Element, end: Element) {
-        _ = dictionary.add(word: word)
-        _ = dictionary.add(word: end)
-    }
     
     func initializeForward() -> Context {
         return Context(wrapping: self, initial: forward)
@@ -33,14 +26,6 @@ class Model<Element>
     
     func initializeBackward() -> Context {
         return Context(wrapping: self, initial: backward)
-    }
-    
-    func symbol(for word: Element) -> Int {
-        return dictionary.find(word: word)
-    }
-    
-    func word(for symbol: Int) -> Element {
-        return dictionary[Int(symbol)]
     }
     
     class Context {
@@ -57,22 +42,12 @@ class Model<Element>
             return context.prefix(wrap.order).flatMap({ $0 })
         }
         
-        func updateContext(word: Element) {
-            let symbol = wrap.dictionary.find(word: word)
-            updateContext(symbol: symbol)
-        }
-        
         func updateContext(symbol: Int) {
             for i in (1 ..< (wrap.order + 2)).reversed() {
                 if context[i - 1] != nil {
                     context[i] = context[i - 1]?.find(symbol: symbol)
                 }
             }
-        }
-        
-        func updateModel(word: Element) {
-            let symbol = wrap.dictionary.add(word: word)
-            updateModel(symbol: symbol)
         }
         
         func updateModel(symbol: Int) {
@@ -273,12 +248,19 @@ struct PersonalityWords<Element : Hashable> {
 class Personality<Element : WordElement> {
     typealias Keywords = SymbolCollection<Element>
     
-    var model : Model<Element>
-    var wordLists : PersonalityWords<Element>
+    var dictionary : SymbolCollection<Element>
+    var model      : Model<Element>
+    var wordLists  : PersonalityWords<Element>
     
+
     init(lists: PersonalityWords<Element>, word: Element, end: Element) {
-        model = Model(word: word, end: end)
+        dictionary = SymbolCollection<Element>()
+        
+        _ = dictionary.add(word: word)
+        _ = dictionary.add(word: end)
+
         wordLists = lists
+        model = Model()
     }
     
     func doReply(input: [Element]) -> [Element]? {
@@ -319,6 +301,14 @@ class Personality<Element : WordElement> {
         return output
     }
     
+    func symbol(for word: Element) -> Int {
+        return dictionary.find(word: word)
+    }
+    
+    func word(for symbol: Int) -> Element {
+        return dictionary[Int(symbol)]
+    }
+
     func reply(keys: Keywords) -> [Element]
     {
         var replies = [Element]()
@@ -348,7 +338,7 @@ class Personality<Element : WordElement> {
             
             start = false
             
-            replies.append(model.word(for: Int(symbol)))
+            replies.append(self.word(for: Int(symbol)))
             
             forwardContext.updateContext(symbol: Int(symbol))
         }
@@ -359,8 +349,8 @@ class Personality<Element : WordElement> {
             .prefix(min(replies.count, model.order))
             .reversed()
             .forEach {
-                backwardContext.updateContext(word: $0)
-        }
+                backwardContext.updateContext(symbol: self.symbol(for: $0))
+            }
         
         while true {
             (symbol, used_key) = babble(context: backwardContext,
@@ -372,7 +362,7 @@ class Personality<Element : WordElement> {
                 break
             }
             
-            replies.insert(model.word(for: Int(symbol)), at: 0)
+            replies.insert(self.word(for: Int(symbol)), at: 0)
             backwardContext.updateContext(symbol: Int(symbol))
         }
         
@@ -393,7 +383,7 @@ class Personality<Element : WordElement> {
     }
     
     func shouldAddKey(word: Element) -> Bool {
-        if model.symbol(for: word) == 0 {
+        if self.symbol(for: word) == 0 {
             return false
         }
         
@@ -413,7 +403,7 @@ class Personality<Element : WordElement> {
     }
     
     func shouldAddAux(word: Element) -> Bool {
-        if model.symbol(for: word) == 0 {
+        if self.symbol(for: word) == 0 {
             return false
         }
         
@@ -451,10 +441,10 @@ class Personality<Element : WordElement> {
         while count >= 0 {
             symbol = Int(node.tree[i].symbol)
             
-            if ((keys.find(word: model.word(for: symbol)) != 0) &&
+            if ((keys.find(word: self.word(for: symbol)) != 0) &&
                 ((used_key == true) ||
-                    (!wordLists.aux.contains(model.word(for: symbol)) || wordLists.aux.first == model.word(for: symbol))) &&
-                (words.contains(model.word(for: symbol)) == false))
+                    (!wordLists.aux.contains(self.word(for: symbol)) || wordLists.aux.first == self.word(for: symbol))) &&
+                (words.contains(self.word(for: symbol)) == false))
             {
                 used_key = true
                 break;
@@ -486,9 +476,9 @@ class Personality<Element : WordElement> {
             let stop = i
             
             while true {
-                if (model.symbol(for: keys[i]) != 0) && (!wordLists.aux.contains(keys[i]) || wordLists.aux.first == keys[i])
+                if (self.symbol(for: keys[i]) != 0) && (!wordLists.aux.contains(keys[i]) || wordLists.aux.first == keys[i])
                 {
-                    return Int32(model.symbol(for: keys[i]))
+                    return Int32(self.symbol(for: keys[i]))
                 }
                 
                 i += 1
@@ -517,7 +507,7 @@ class Personality<Element : WordElement> {
         let forwardContext = model.initializeForward()
         
         for word in words {
-            let symbol = model.symbol(for: word)
+            let symbol = self.symbol(for: word)
             
             if keys.find(word: word) != 0 {
                 var probability : Float32 = 0
@@ -543,7 +533,7 @@ class Personality<Element : WordElement> {
         let backwardContext = model.initializeBackward()
         
         for word in words.lazy.reversed() {
-            let symbol = model.symbol(for: word)
+            let symbol = self.symbol(for: word)
             
             if keys.find(word: word) != 0 {
                 var probability : Float = 0
@@ -582,18 +572,22 @@ class Personality<Element : WordElement> {
             return
         }
         
+        words.forEach { _ = self.dictionary.add(word: $0) }
+        
         do {
             // Forward training
             let forwardContext = model.initializeForward()
-            words.forEach { forwardContext.updateModel(word: $0) }
-            forwardContext.updateModel(symbol: 1)
+            let symbols = words.map { self.symbol(for: $0) } + [1]
+            
+            symbols.forEach { forwardContext.updateModel(symbol: $0)}
         }
         
         do {
             // Backwards training
             let backwardContext = model.initializeBackward()
-            words.lazy.reversed().forEach { backwardContext.updateModel(word: $0) }
-            backwardContext.updateModel(symbol: 1)
+            let symbols = words.reversed().map { self.symbol(for: $0) } + [1]
+
+            symbols.forEach { backwardContext.updateModel(symbol: $0)}
         }
     }
 }
