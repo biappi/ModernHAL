@@ -82,13 +82,16 @@ protocol Copyable {
     func copy() -> Self
 }
 
-class SymbolCollection<Element>
+class SymbolCollection<Element> : SymbolStore
     where Element: Copyable & Comparable
 {
     var size : Int { return entries.count }
     
     var indices = [Int]()
     var entries = [Element]()
+    
+    required init() {
+    }
     
     func add(word: Element) -> Int {
         let (position, found) = search(word: word)
@@ -101,6 +104,14 @@ class SymbolCollection<Element>
         indices.insert(newSymbol, at: position)
         
         return indices[position]
+    }
+
+    func symbol(for word: Element) -> Int {
+        return find(word: word)
+    }
+    
+    func word(for symbol: Int) -> Element {
+        return self[Int(symbol)]
     }
     
     func search(word: Element) -> (position: Int, found: Bool) {
@@ -255,37 +266,31 @@ extension Int : Symbol {
     }
 }
 
-class SymbolStore<Element : WordElement> {
-    var dictionary : SymbolCollection<Element>
+protocol SymbolStore {
+    associatedtype Element
+    associatedtype Symbol
     
-    init() {
-        dictionary = SymbolCollection<Element>()
-    }
+    init()
     
-    func add(word: Element) -> Int {
-        return dictionary.add(word: word)
-    }
+    func add(word: Element) -> Symbol
     
-    func symbol(for word: Element) -> Int {
-        return dictionary.find(word: word)
-    }
-    
-    func word(for symbol: Int) -> Element {
-        return dictionary[Int(symbol)]
-    }
+    func symbol(for word: Element) -> Symbol
+    func word(for symbol: Symbol) -> Element
 }
 
-class Personality<Element : WordElement> {
+class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
+    where SymbolDictionary.Element == Element, SymbolDictionary.Symbol == Int
+{
     typealias Keywords = SymbolCollection<Element>
     
-    var dictionary : SymbolStore<Element>
+    var dictionary : SymbolDictionary
     var model      : Model<Element, Int>
     var wordLists  : PersonalityWords<Element>
     
 
     init(lists: PersonalityWords<Element>, word: Element, end: Element) {
         
-        dictionary = SymbolStore()
+        dictionary = SymbolDictionary()
         
         _ = dictionary.add(word: word)
         _ = dictionary.add(word: end)
@@ -681,7 +686,7 @@ extension String : WordElement {
 }
 
 class ModernHAL {
-    let personality : Personality<String>
+    let personality : Personality<String, SymbolCollection<String>>
     
     init() {
         var swap = [String:[String]]()
