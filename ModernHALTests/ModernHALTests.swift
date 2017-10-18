@@ -158,7 +158,7 @@ class ModernHALTests: XCTestCase {
                 add_word(aux, STRING(b))
                 add_word(aux, STRING(c))
                 
-                let second = modernhal_do_reply(input: string)
+                let second = modernhal_do_reply(globalModel: Model(), personality: Personality(), input: string)
                 print(second)
                 
                 return first == second

@@ -199,9 +199,9 @@ int wordcmp(STRING, STRING);
 bool word_exists(DICTIONARY *, STRING);
 int rnd(int);
 
-extern DICTIONARY *words;
-extern MODEL *model;
-extern bool used_key;
+//extern DICTIONARY *words;
+//extern MODEL *model;
+//extern bool used_key;
 extern SWAP *swp;
 extern DICTIONARY *ban;
 extern DICTIONARY *aux;

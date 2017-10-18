@@ -16,7 +16,7 @@ class Model {
     private var forward  = Tree()
     private var backward = Tree()
     
-    init(wrapping model: UnsafeMutablePointer<MODEL>) {
+    init() {
         _ = dictionary.add(word: _word)
         _ = dictionary.add(word: _end)
     }
@@ -98,7 +98,7 @@ class Keywords {
     
     var indices = [Int]()
     var entries = [STRING]()
-        
+    
     func add(word: STRING) -> Int {
         let (position, found) = search(word: word)
         if found {
@@ -156,7 +156,6 @@ class Keywords {
     }
 }
 
-
 extension SWAP : Collection {
     public var startIndex : Int { return 0 }
     public var endIndex   : Int { return Int(size) }
@@ -185,11 +184,13 @@ public func ==(lhs: STRING, rhs: STRING) -> Bool {
     return wordcmp(lhs, rhs) == 0
 }
 
-extension STRING {
+extension STRING : Hashable {
     func toString() -> String {
         let data = Data(bytes: self.word, count: Int(self.length))
         return String(data: data, encoding: .utf8)!
     }
+    
+    public var hashValue: Int { return self.toString().hashValue}
 }
 
 class Tree
@@ -253,14 +254,40 @@ class Tree
     }
 }
 
-func modernhal_do_reply(globalModel: Model, input: String) -> String {
+class Personality {
+    var model : Model
+    var swap : [STRING:[STRING]]
+    var auxy : [STRING]
+    var bann : [STRING]
+    
+    init() {
+        model = Model()
+        
+        swap = [STRING:[STRING]]()
+        for i in 0 ..< Int(swp.pointee.size) {
+            let l = (from: swp.pointee.from.advanced(by: i).pointee,
+                     to:   swp.pointee.to.advanced(by: i).pointee)
+            
+            var d = swap[l.from] ?? [STRING]()
+            d.append(l.to)
+        }
+        
+        auxy = (0 ..< Int(aux.pointee.size))
+            .map { aux.pointee.entry.advanced(by: $0).pointee }
+        
+        bann = (0 ..< Int(ban.pointee.size))
+            .map { ban.pointee.entry.advanced(by: $0).pointee }
+    }
+}
+
+func modernhal_do_reply(globalModel: Model, personality: Personality, input: String) -> String {
     
     return input.uppercased().withCString {
         let words = modernhal_make_words(from: UnsafeMutablePointer(mutating: $0))
         
         modernhal_learn(model: globalModel, words: words)
         
-        let output = modernhal_generate_reply(model: globalModel, words: words)
+        let output = modernhal_generate_reply(model: globalModel, personality: personality, words: words)
         
         var outputData = output.data(using: .utf8)
         outputData?.append(0)
@@ -293,12 +320,13 @@ func modernhal_learn(model: Model, words: [STRING])
 
 let dummy = Keywords()
 func modernhal_generate_reply(model: Model,
+                              personality: Personality,
                               words: [STRING]) -> String
 {
     var output   = "I don't know enough to answer you yet!"
-    let keywords = modernhal_make_keywords(model: model, words: words)
+    let keywords = modernhal_make_keywords(model: model, personality: personality, words: words)
     
-    var replywords = modernhal_reply(model: model, keys: dummy)
+    var replywords = modernhal_reply(model: model, personality: personality, keys: dummy)
     
     
     if words != replywords {
@@ -309,7 +337,7 @@ func modernhal_generate_reply(model: Model,
     var maxSurprise : Float32 = -10.0
     
     for _ in 0 ..< 10 {
-        replywords = modernhal_reply(model: model, keys: keywords)
+        replywords = modernhal_reply(model: model, personality: personality, keys: keywords)
         let surprise = modernhal_evaluate_reply(model: model,
                                                 keys: keywords,
                                                 words: replywords)
@@ -325,7 +353,7 @@ func modernhal_generate_reply(model: Model,
     return output == "" ? "I am utterly speechless!" : output
 }
 
-func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
+func modernhal_reply(model: Model, personality: Personality, keys: Keywords) -> [STRING]
 {
     var replies = [STRING]()
     
@@ -338,10 +366,18 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
     
     while true {
         if start {
-            symbol = modernhal_seed(model: model, context: forwardContext, keys: keys)
+            symbol = modernhal_seed(model: model,
+                                    context: forwardContext,
+                                    personality: personality,
+                                    keys: keys)
         }
         else {
-            (symbol, used_key) = modernhal_babble(model: model, context: forwardContext, keys: keys, words: replies, used_key: used_key)
+            (symbol, used_key) = modernhal_babble(model: model,
+                                                  context: forwardContext,
+                                                  personality: personality,
+                                                  keys: keys,
+                                                  words: replies,
+                                                  used_key: used_key)
         }
         
         if symbol == 0 || symbol == 1 {
@@ -365,7 +401,7 @@ func modernhal_reply(model: Model, keys: Keywords) -> [STRING]
         }
     
     while true {
-        (symbol, used_key) = modernhal_babble(model: model, context: backwardContext, keys: keys, words: replies, used_key: used_key)
+        (symbol, used_key) = modernhal_babble(model: model, context: backwardContext, personality: personality, keys: keys, words: replies, used_key: used_key)
         
         if symbol == 0 || symbol == 1 {
             break
@@ -502,27 +538,25 @@ func modernhal_make_words(from input: UnsafeMutablePointer<Int8>) -> [STRING] {
     return dictionary
 }
 
-func modernhal_make_keywords(model: Model, words: [STRING]) -> Keywords {
+func modernhal_make_keywords(model: Model, personality: Personality, words: [STRING]) -> Keywords {
     let keys = Keywords()
     
     for word in words {
-        let swaps = swp.pointee[word]
-        let toAdd = swaps.isEmpty ? [word] : swaps
-        toAdd.forEach { modernhal_add_key(model: model, keys: keys, word: $0) }
+        let toAdd = personality.swap[word] ?? [word]
+        toAdd.forEach { modernhal_add_key(model: model, personality: personality, keys: keys, word: $0) }
     }
     
     if keys.size > 0 {
         for word in words {
-            let swaps = swp.pointee[word]
-            let toAdd = swaps.isEmpty ? [word] : swaps
-            toAdd.forEach { modernhal_add_aux(model: model, keys: keys, word: $0) }
+            let toAdd = personality.swap[word] ?? [word]
+            toAdd.forEach { modernhal_add_aux(model: model, personality: personality, keys: keys, word: $0) }
         }
     }
     
     return keys
 }
 
-func modernhal_add_key(model: Model, keys: Keywords, word: STRING) {
+func modernhal_add_key(model: Model, personality: Personality, keys: Keywords, word: STRING) {
     if model.symbol(for: word) == 0 {
         return
     }
@@ -531,18 +565,18 @@ func modernhal_add_key(model: Model, keys: Keywords, word: STRING) {
         return
     }
     
-    if Int(find_word(ban, word)) != 0 {
+    if personality.bann.contains(word) {
         return
     }
     
-    if Int(find_word(aux, word)) != 0 {
+    if personality.auxy.contains(word) && personality.auxy.first != word {
         return
     }
     
     _ = keys.add(word: word)
 }
 
-func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
+func modernhal_add_aux(model: Model, personality: Personality, keys: Keywords, word: STRING) {
     if model.symbol(for: word) == 0 {
         return
     }
@@ -551,7 +585,7 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
         return
     }
     
-    if Int(find_word(aux, word)) == 0 {
+    if !personality.auxy.contains(word) || personality.auxy.first == word {
         return
     }
     
@@ -560,6 +594,7 @@ func modernhal_add_aux(model: Model, keys: Keywords, word: STRING) {
 
 func modernhal_babble(model: Model,
                       context:Model.Context,
+                      personality: Personality,
                       keys: Keywords,
                       words: [STRING],
                       used_key: Bool) -> (Int32, Bool)
@@ -583,7 +618,8 @@ func modernhal_babble(model: Model,
         symbol = Int(node.tree[i].symbol)
         
         if ((keys.find(word: model.word(for: symbol)) != 0) &&
-            ((used_key == true) || (find_word(aux, model.word(for: symbol)) == 0)) &&
+            ((used_key == true) ||
+                (!personality.auxy.contains(model.word(for: symbol)) || personality.auxy.first == model.word(for: symbol))) &&
             (words.contains(model.word(for: symbol)) == false))
         {
             used_key = true
@@ -599,7 +635,7 @@ func modernhal_babble(model: Model,
     return (Int32(symbol), used_key)
 }
 
-func modernhal_seed(model: Model, context: Model.Context, keys: Keywords) -> Int32 {
+func modernhal_seed(model: Model, context: Model.Context, personality: Personality, keys: Keywords) -> Int32 {
     var symbol = 0
     
     if context.currentContext.branch == 0 {
@@ -616,7 +652,7 @@ func modernhal_seed(model: Model, context: Model.Context, keys: Keywords) -> Int
         let stop = i
         
         while true {
-            if (model.symbol(for: keys[i]) != 0) && (find_word(aux, keys[i]) == 0)
+            if (model.symbol(for: keys[i]) != 0) && (!personality.auxy.contains(keys[i]) || personality.auxy.first == keys[i])
             {
                 return Int32(model.symbol(for: keys[i]))
             }
