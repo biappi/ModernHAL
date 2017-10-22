@@ -89,6 +89,71 @@ class Model<Element, SymbolType>
         return replies
     }
 
+    func evaluateReply(keys:  [SymbolType],
+                       reply: [SymbolType])
+        -> Float32
+    {
+        var num = 0
+        var entropy : Float32 = 0
+        
+        let forwardContext = initializeForward()
+        
+        for word in reply {
+            if keys.contains(word) && (word != keys.first) {
+                var probability : Float32 = 0
+                var count       : Int = 0
+                
+                num += 1
+                
+                for context in forwardContext.activeContexts() {
+                    let node = context.find(symbol: word)!
+                    probability += Float32(node.count) / Float32(context.usage)
+                    count += 1
+                }
+                
+                if count > 0 {
+                    entropy -= Float32(log(Double(probability / Float32(count))))
+                }
+            }
+            
+            forwardContext.updateContext(symbol: word)
+        }
+        
+        
+        let backwardContext = initializeBackward()
+        
+        for word in reply.lazy.reversed() {
+            if keys.contains(word) && (word != keys.first) {
+                var probability : Float = 0
+                var count       : Float = 0
+                
+                num += 1
+                
+                for context in backwardContext.activeContexts() {
+                    let node = context.find(symbol: word)!
+                    probability += Float32(node.count) / Float32(context.usage)
+                    count += 1
+                }
+                
+                if count > 0 {
+                    entropy -= Float32(log(Double(probability / Float32(count))))
+                }
+            }
+            
+            backwardContext.updateContext(symbol: word)
+        }
+        
+        if num >= 8 {
+            entropy /= Float32(sqrt(Double(num - 1)))
+        }
+        
+        if num >= 16 {
+            entropy /= Float32(num)
+        }
+        
+        return entropy
+    }
+
     func babble(context: Model.Context,
                 keys: [SymbolType],
                 aux: [SymbolType],
@@ -444,44 +509,42 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     
     func generateReply(words: [Element]) -> [Element]?
     {
-        var output   = nil as [Element]?
+        var output       = nil as [Int]?
         
-        let terminals  = [0, 1]
-        let keywords   = makeKeywords(words: words).deduplicated()
-        let keySymbols = keywords.map      { dictionary.symbol(for: $0) }
-        let auxSymbols = wordLists.aux.map { dictionary.symbol(for: $0) }
+        let terminals    = [0, 1]
+        let keywords     = makeKeywords(words: words).deduplicated()
+        let wordsSymbols = words.map         { dictionary.symbol(for: $0) }
+        let keySymbols   = keywords.map      { dictionary.symbol(for: $0) }
+        let auxSymbols   = wordLists.aux.map { dictionary.symbol(for: $0) }
         
-        var replywords = model.reply(keys: [],
-                                     aux: [],
-                                     terminals: terminals)
-                            .map { dictionary.word(for: $0) }
+        var reply = model.reply(keys: [],
+                                aux: [],
+                                terminals: terminals)
         
-        if words != replywords {
-            output = replywords
+        if wordsSymbols != reply {
+            output = reply
         }
         
         var count = 0
         var maxSurprise : Float32 = -10.0
         
         for _ in 0 ..< 10 {
-            replywords = model.reply(keys: keySymbols,
-                                     aux: auxSymbols,
-                                     terminals: terminals)
-                            .map { dictionary.word(for: $0) }
+            reply = model.reply(keys: keySymbols,
+                                aux: auxSymbols,
+                                terminals: terminals)
             
-            let surprise = evaluateReply(model: model,
-                                         keys: keywords,
-                                         words: replywords)
+            let surprise = model.evaluateReply(keys: keySymbols,
+                                               reply: reply)
             
             count += 1
             
-            if surprise > maxSurprise && (words != replywords) {
+            if surprise > maxSurprise && (wordsSymbols != reply) {
                 maxSurprise = surprise
-                output = replywords
+                output = reply
             }
         }
         
-        return output
+        return output.map { $0.map { dictionary.word(for: $0) } }
     }
     
     func makeKeywords(words: [Element]) -> [Element] {
@@ -531,76 +594,6 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         }
         
         return true
-    }
-    
-    func evaluateReply(model: Model<Element, Int>,
-                       keys:  [Element],
-                       words: [Element])
-        -> Float32
-    {
-        var num = 0
-        var entropy : Float32 = 0
-        
-        let forwardContext = model.initializeForward()
-        
-        for word in words {
-            let symbol = dictionary.symbol(for: word)
-            
-            if keys.contains(word) && (word != keys.first) {
-                var probability : Float32 = 0
-                var count       : Int = 0
-                
-                num += 1
-                
-                for context in forwardContext.activeContexts() {
-                    let node = context.find(symbol: symbol)!
-                    probability += Float32(node.count) / Float32(context.usage)
-                    count += 1
-                }
-                
-                if count > 0 {
-                    entropy -= Float32(log(Double(probability / Float32(count))))
-                }
-            }
-            
-            forwardContext.updateContext(symbol: symbol)
-        }
-        
-        
-        let backwardContext = model.initializeBackward()
-        
-        for word in words.lazy.reversed() {
-            let symbol = dictionary.symbol(for: word)
-            
-            if keys.contains(word) && (word != keys.first) {
-                var probability : Float = 0
-                var count       : Float = 0
-                
-                num += 1
-                
-                for context in backwardContext.activeContexts() {
-                    let node = context.find(symbol: symbol)!
-                    probability += Float32(node.count) / Float32(context.usage)
-                    count += 1
-                }
-                
-                if count > 0 {
-                    entropy -= Float32(log(Double(probability / Float32(count))))
-                }
-            }
-            
-            backwardContext.updateContext(symbol: symbol)
-        }
-        
-        if num >= 8 {
-            entropy /= Float32(sqrt(Double(num - 1)))
-        }
-        
-        if num >= 16 {
-            entropy /= Float32(num)
-        }
-        
-        return entropy
     }
     
     func learn(words: [Element])
