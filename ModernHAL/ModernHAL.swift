@@ -335,7 +335,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         var used_key = false
         
         var start = true
-        var symbol : Int32 = 0
+        var symbol : Int? = nil
         
         while true {
             if start {
@@ -349,15 +349,15 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                                             used_key: used_key)
             }
             
-            if symbol == 0 || symbol == 1 {
+            guard let symbol = symbol, symbol != 0, symbol != 1 else {
                 break
             }
             
             start = false
             
-            replies.append(dictionary.word(for: Int(symbol)))
+            replies.append(dictionary.word(for: symbol))
             
-            forwardContext.updateContext(symbol: Int(symbol))
+            forwardContext.updateContext(symbol: symbol)
         }
         
         let backwardContext = model.initializeBackward()
@@ -375,7 +375,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                                         words: replies,
                                         used_key: used_key)
             
-            if symbol == 0 || symbol == 1 {
+            guard let symbol = symbol, symbol != 0, symbol != 1 else {
                 break
             }
             
@@ -438,14 +438,14 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     func babble(context: Model<Element, Int>.Context,
                 keys: [Element],
                 words: [Element],
-                used_key: Bool) -> (Int32, Bool)
+                used_key: Bool) -> (Int?, Bool)
     {
         guard let node = context.longestAvailableContext() else {
-            return (0, used_key)
+            return (nil, used_key)
         }
         
         if node.branch == 0 {
-            return (0, used_key)
+            return (nil, used_key)
         }
         
         var i = Int(rnd(Int32(node.branch)))
@@ -453,10 +453,11 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         
         var used_key = used_key
         
-        var symbol : Int = 0
+        var result : Int? = nil
         
         while count >= 0 {
-            symbol = Int(node.tree[i].symbol)
+            let symbol = Int(node.tree[i].symbol)
+            result = symbol
             
             if ((keys.contains(dictionary.word(for: symbol))) &&
                 (dictionary.word(for: symbol) != keys.first) &&
@@ -468,25 +469,24 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                 break;
             }
             
-            
             count -= node.tree[i].count
             
             i = (i >= (node.branch - 1)) ? 0 : i + 1
         }
         
-        return (Int32(symbol), used_key)
+        return (result.map { $0 }, used_key)
     }
     
-    func seed(context: Model<Element, Int>.Context, keys: [Element]) -> Int32 {
-        var symbol = 0
+    func seed(context: Model<Element, Int>.Context, keys: [Element]) -> Int? {
+        var symbol : Int?
         
         if context.currentContext.branch == 0 {
-            symbol = 0
+            symbol = nil
         }
         else {
-            symbol = Int(context.currentContext
+            symbol = context.currentContext
                 .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
-                .symbol)
+                .symbol
         }
         
         if keys.count > 0 {
@@ -496,7 +496,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             while true {
                 if (dictionary.symbol(for: keys[i]) != 0) && (!wordLists.aux.contains(keys[i]) || wordLists.aux.first == keys[i])
                 {
-                    return Int32(dictionary.symbol(for: keys[i]))
+                    return dictionary.symbol(for: keys[i])
                 }
                 
                 i += 1
@@ -506,12 +506,12 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                 }
                 
                 if i == stop {
-                    return Int32(symbol)
+                    return symbol
                 }
             }
         }
         
-        return Int32(symbol)
+        return symbol
     }
     
     func evaluateReply(model: Model<Element, Int>,
