@@ -24,6 +24,154 @@ class Model<Element, SymbolType>
     private var forward  = Tree<SymbolType>(symbol: SymbolType.initial)
     private var backward = Tree<SymbolType>(symbol: SymbolType.initial)
     
+    func reply(keys: [SymbolType],
+               aux: [SymbolType],
+               terminals: [SymbolType]) -> [SymbolType]
+    {
+        var replies = [SymbolType]()
+        
+        let forwardContext = initializeForward()
+        
+        var used_key = false
+        
+        var start = true
+        var symbol : SymbolType? = nil
+        
+        while true {
+            if start {
+                symbol = seed(context: forwardContext,
+                              keys: keys,
+                              aux: aux)
+            }
+            else {
+                (symbol, used_key) = babble(context: forwardContext,
+                                            keys: keys,
+                                            aux: aux,
+                                            words: replies,
+                                            used_key: used_key)
+            }
+            
+            guard let symbol = symbol, !terminals.contains(symbol) else {
+                break
+            }
+            
+            start = false
+            
+            replies.append(symbol)
+            
+            forwardContext.updateContext(symbol: symbol)
+        }
+        
+        let backwardContext = initializeBackward()
+        
+        replies.lazy
+            .prefix(min(replies.count, order))
+            .reversed()
+            .forEach {
+                backwardContext.updateContext(symbol: $0)
+            }
+        
+        while true {
+            (symbol, used_key) = babble(context: backwardContext,
+                                        keys: keys,
+                                        aux: aux,
+                                        words: replies,
+                                        used_key: used_key)
+            
+            guard let symbol = symbol, !terminals.contains(symbol) else {
+                break
+            }
+            
+            replies.insert(symbol, at: 0)
+            backwardContext.updateContext(symbol: symbol)
+        }
+        
+        return replies
+    }
+
+    func babble(context: Model.Context,
+                keys: [SymbolType],
+                aux: [SymbolType],
+                words: [SymbolType],
+                used_key: Bool) -> (SymbolType?, Bool)
+    {
+        guard let node = context.longestAvailableContext() else {
+            return (nil, used_key)
+        }
+        
+        if node.branch == 0 {
+            return (nil, used_key)
+        }
+        
+        var i = Int(rnd(Int32(node.branch)))
+        var count = Int(rnd(Int32(node.usage)))
+        
+        var used_key = used_key
+        
+        var result : SymbolType? = nil
+        
+        while count >= 0 {
+            let symbol = node.tree[i].symbol
+            result = symbol
+            
+            if ((keys.contains(symbol)) &&
+                (symbol != keys.first) &&
+                ((used_key == true) ||
+                    (!aux.contains(symbol) || aux.first == symbol)) &&
+                (words.contains(symbol) == false))
+            {
+                used_key = true
+                break;
+            }
+            
+            count -= node.tree[i].count
+            
+            i = (i >= (node.branch - 1)) ? 0 : i + 1
+        }
+        
+        return (result.map { $0 }, used_key)
+    }
+    
+    func seed(context: Model.Context,
+              keys: [SymbolType],
+              aux: [SymbolType]) -> SymbolType?
+    {
+        var symbol : SymbolType?
+        
+        if context.currentContext.branch == 0 {
+            symbol = nil
+        }
+        else {
+            symbol = context.currentContext
+                .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
+                .symbol
+        }
+        
+        if keys.count > 0 {
+            var i = Int(rnd(Int32(keys.count)))
+            let stop = i
+            
+            while true {
+                if (!aux.contains(keys[i]) || aux.first == keys[i])
+                {
+                    return keys[i]
+                }
+                
+                i += 1
+                
+                if i == keys.count {
+                    i = 0
+                }
+                
+                if i == stop {
+                    return symbol
+                }
+            }
+        }
+        
+        return symbol
+    }
+    
     func initializeForward() -> Context {
         return Context(wrapping: self, initial: forward)
     }
@@ -298,11 +446,15 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     {
         var output   = nil as [Element]?
         
-        let keywords = makeKeywords(words: words).deduplicated()
+        let terminals  = [0, 1]
+        let keywords   = makeKeywords(words: words).deduplicated()
         let keySymbols = keywords.map      { dictionary.symbol(for: $0) }
         let auxSymbols = wordLists.aux.map { dictionary.symbol(for: $0) }
         
-        var replywords = reply(keys: [], aux: []).map { dictionary.word(for: $0) }
+        var replywords = model.reply(keys: [],
+                                     aux: [],
+                                     terminals: terminals)
+                            .map { dictionary.word(for: $0) }
         
         if words != replywords {
             output = replywords
@@ -312,7 +464,10 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         var maxSurprise : Float32 = -10.0
         
         for _ in 0 ..< 10 {
-            replywords = reply(keys: keySymbols, aux: auxSymbols).map { dictionary.word(for: $0) }
+            replywords = model.reply(keys: keySymbols,
+                                     aux: auxSymbols,
+                                     terminals: terminals)
+                            .map { dictionary.word(for: $0) }
             
             let surprise = evaluateReply(model: model,
                                          keys: keywords,
@@ -327,70 +482,6 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         }
         
         return output
-    }
-    
-    func reply(keys: [Int],
-               aux: [Int]) -> [Int]
-    {
-        var replies = [Int]()
-        
-        let forwardContext = model.initializeForward()
-        
-        var used_key = false
-        
-        var start = true
-        var symbol : Int? = nil
-        
-        while true {
-            if start {
-                symbol = seed(context: forwardContext,
-                              keys: keys,
-                              aux: aux)
-            }
-            else {
-                (symbol, used_key) = babble(context: forwardContext,
-                                            keys: keys,
-                                            aux: aux,
-                                            words: replies,
-                                            used_key: used_key)
-            }
-            
-            guard let symbol = symbol, symbol != 0, symbol != 1 else {
-                break
-            }
-            
-            start = false
-            
-            replies.append(symbol)
-            
-            forwardContext.updateContext(symbol: symbol)
-        }
-        
-        let backwardContext = model.initializeBackward()
-        
-        replies.lazy
-            .prefix(min(replies.count, model.order))
-            .reversed()
-            .forEach {
-                backwardContext.updateContext(symbol: $0)
-            }
-        
-        while true {
-            (symbol, used_key) = babble(context: backwardContext,
-                                        keys: keys,
-                                        aux: aux,
-                                        words: replies,
-                                        used_key: used_key)
-            
-            guard let symbol = symbol, symbol != 0, symbol != 1 else {
-                break
-            }
-            
-            replies.insert(symbol, at: 0)
-            backwardContext.updateContext(symbol: symbol)
-        }
-        
-        return replies
     }
     
     func makeKeywords(words: [Element]) -> [Element] {
@@ -440,89 +531,6 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         }
         
         return true
-    }
-    
-    func babble(context: Model<Element, Int>.Context,
-                keys: [Int],
-                aux: [Int],
-                words: [Int],
-                used_key: Bool) -> (Int?, Bool)
-    {
-        guard let node = context.longestAvailableContext() else {
-            return (nil, used_key)
-        }
-        
-        if node.branch == 0 {
-            return (nil, used_key)
-        }
-        
-        var i = Int(rnd(Int32(node.branch)))
-        var count = Int(rnd(Int32(node.usage)))
-        
-        var used_key = used_key
-        
-        var result : Int? = nil
-        
-        while count >= 0 {
-            let symbol = Int(node.tree[i].symbol)
-            result = symbol
-            
-            if ((keys.contains(symbol)) &&
-                (symbol != keys.first) &&
-                ((used_key == true) ||
-                    (!aux.contains(symbol) || aux.first == symbol)) &&
-                (words.contains(symbol) == false))
-            {
-                used_key = true
-                break;
-            }
-            
-            count -= node.tree[i].count
-            
-            i = (i >= (node.branch - 1)) ? 0 : i + 1
-        }
-        
-        return (result.map { $0 }, used_key)
-    }
-    
-    func seed(context: Model<Element, Int>.Context,
-              keys: [Int],
-              aux: [Int]) -> Int?
-    {
-        var symbol : Int?
-        
-        if context.currentContext.branch == 0 {
-            symbol = nil
-        }
-        else {
-            symbol = context.currentContext
-                .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
-                .symbol
-        }
-        
-        if keys.count > 0 {
-            var i = Int(rnd(Int32(keys.count)))
-            let stop = i
-            
-            while true {
-                if (keys[i] != 0) && (!aux.contains(keys[i]) || aux.first == keys[i])
-                {
-                    return keys[i]
-                }
-                
-                i += 1
-        
-                if i == keys.count {
-                    i = 0
-                }
-                
-                if i == stop {
-                    return symbol
-                }
-            }
-        }
-        
-        return symbol
     }
     
     func evaluateReply(model: Model<Element, Int>,
