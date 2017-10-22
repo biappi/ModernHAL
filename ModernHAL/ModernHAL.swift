@@ -299,8 +299,10 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         var output   = nil as [Element]?
         
         let keywords = makeKeywords(words: words).deduplicated()
+        let keySymbols = keywords.map      { dictionary.symbol(for: $0) }
+        let auxSymbols = wordLists.aux.map { dictionary.symbol(for: $0) }
         
-        var replywords = reply(keys: [])
+        var replywords = reply(keys: [], aux: []).map { dictionary.word(for: $0) }
         
         if words != replywords {
             output = replywords
@@ -310,7 +312,8 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         var maxSurprise : Float32 = -10.0
         
         for _ in 0 ..< 10 {
-            replywords = reply(keys: keywords)
+            replywords = reply(keys: keySymbols, aux: auxSymbols).map { dictionary.word(for: $0) }
+            
             let surprise = evaluateReply(model: model,
                                          keys: keywords,
                                          words: replywords)
@@ -326,9 +329,10 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         return output
     }
     
-    func reply(keys: [Element]) -> [Element]
+    func reply(keys: [Int],
+               aux: [Int]) -> [Int]
     {
-        var replies = [Element]()
+        var replies = [Int]()
         
         let forwardContext = model.initializeForward()
         
@@ -340,11 +344,13 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         while true {
             if start {
                 symbol = seed(context: forwardContext,
-                              keys: keys)
+                              keys: keys,
+                              aux: aux)
             }
             else {
                 (symbol, used_key) = babble(context: forwardContext,
                                             keys: keys,
+                                            aux: aux,
                                             words: replies,
                                             used_key: used_key)
             }
@@ -355,7 +361,7 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             
             start = false
             
-            replies.append(dictionary.word(for: symbol))
+            replies.append(symbol)
             
             forwardContext.updateContext(symbol: symbol)
         }
@@ -366,12 +372,13 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             .prefix(min(replies.count, model.order))
             .reversed()
             .forEach {
-                backwardContext.updateContext(symbol: dictionary.symbol(for: $0))
+                backwardContext.updateContext(symbol: $0)
             }
         
         while true {
             (symbol, used_key) = babble(context: backwardContext,
                                         keys: keys,
+                                        aux: aux,
                                         words: replies,
                                         used_key: used_key)
             
@@ -379,8 +386,8 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
                 break
             }
             
-            replies.insert(dictionary.word(for: Int(symbol)), at: 0)
-            backwardContext.updateContext(symbol: Int(symbol))
+            replies.insert(symbol, at: 0)
+            backwardContext.updateContext(symbol: symbol)
         }
         
         return replies
@@ -436,8 +443,9 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     }
     
     func babble(context: Model<Element, Int>.Context,
-                keys: [Element],
-                words: [Element],
+                keys: [Int],
+                aux: [Int],
+                words: [Int],
                 used_key: Bool) -> (Int?, Bool)
     {
         guard let node = context.longestAvailableContext() else {
@@ -459,11 +467,11 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             let symbol = Int(node.tree[i].symbol)
             result = symbol
             
-            if ((keys.contains(dictionary.word(for: symbol))) &&
-                (dictionary.word(for: symbol) != keys.first) &&
+            if ((keys.contains(symbol)) &&
+                (symbol != keys.first) &&
                 ((used_key == true) ||
-                    (!wordLists.aux.contains(dictionary.word(for: symbol)) || wordLists.aux.first == dictionary.word(for: symbol))) &&
-                (words.contains(dictionary.word(for: symbol)) == false))
+                    (!aux.contains(symbol) || aux.first == symbol)) &&
+                (words.contains(symbol) == false))
             {
                 used_key = true
                 break;
@@ -477,7 +485,10 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
         return (result.map { $0 }, used_key)
     }
     
-    func seed(context: Model<Element, Int>.Context, keys: [Element]) -> Int? {
+    func seed(context: Model<Element, Int>.Context,
+              keys: [Int],
+              aux: [Int]) -> Int?
+    {
         var symbol : Int?
         
         if context.currentContext.branch == 0 {
@@ -494,9 +505,9 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
             let stop = i
             
             while true {
-                if (dictionary.symbol(for: keys[i]) != 0) && (!wordLists.aux.contains(keys[i]) || wordLists.aux.first == keys[i])
+                if (keys[i] != 0) && (!aux.contains(keys[i]) || aux.first == keys[i])
                 {
-                    return dictionary.symbol(for: keys[i])
+                    return keys[i]
                 }
                 
                 i += 1
