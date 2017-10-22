@@ -490,13 +490,13 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     var dictionary : SymbolDictionary
     var model      : Model<Element, Int>
     var wordLists  : PersonalityWords<Element>
-    
+    let terminals  : [Int]
 
     init(lists: PersonalityWords<Element>, word: Element, end: Element) {
         dictionary = SymbolDictionary()
         
-        _ = dictionary.add(word: word)
-        _ = dictionary.add(word: end)
+        terminals = [dictionary.add(word: word),
+                     dictionary.add(word: end)]
 
         wordLists = lists
         model = Model()
@@ -511,7 +511,6 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     {
         var output       = nil as [Int]?
         
-        let terminals    = [0, 1]
         let keywords     = makeKeywords(words: words).deduplicated()
         let wordsSymbols = words.map         { dictionary.symbol(for: $0) }
         let keySymbols   = keywords.map      { dictionary.symbol(for: $0) }
@@ -550,50 +549,24 @@ class Personality<Element : WordElement, SymbolDictionary : SymbolStore>
     func makeKeywords(words: [Element]) -> [Element] {
         let swappedWords = words.flatMap { wordLists.swap[$0] ?? [$0] }
         let keywords     = swappedWords.filter { shouldAddKey(word: $0) }
-        
-        if keywords.count > 0 {
-            let auxWords = swappedWords.filter { shouldAddAux(word: $0) }
-            return keywords + auxWords
-        }
-        else {
-            return []
-        }
+        let auxWords     = swappedWords.filter { shouldAddAux(word: $0) }
+        let allKeywords  = keywords.isEmpty ? [] : keywords + auxWords
+        return allKeywords
     }
     
     func shouldAddKey(word: Element) -> Bool {
-        if dictionary.symbol(for: word) == 0 {
-            return false
-        }
-        
-        if !word.isFirstCharAlnum {
-            return false
-        }
-        
-        if wordLists.ban.contains(word) {
-            return false
-        }
-        
-        if wordLists.aux.contains(word) && wordLists.aux.first != word {
-            return false
-        }
-        
-        return true
+        return
+            (dictionary.symbol(for: word) != 0) &&
+            word.isFirstCharAlnum &&
+            !wordLists.ban.contains(word) &&
+            (!wordLists.aux.contains(word) || wordLists.aux.first == word)
     }
     
     func shouldAddAux(word: Element) -> Bool {
-        if dictionary.symbol(for: word) == 0 {
-            return false
-        }
-        
-        if !word.isFirstCharAlnum {
-            return false
-        }
-        
-        if !wordLists.aux.contains(word) || wordLists.aux.first == word {
-            return false
-        }
-        
-        return true
+        return
+            (dictionary.symbol(for: word) != 0) &&
+            word.isFirstCharAlnum &&
+            (wordLists.aux.contains(word) && wordLists.aux.first != word)
     }
     
     func learn(words: [Element])
