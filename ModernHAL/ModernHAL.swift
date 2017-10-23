@@ -163,40 +163,19 @@ class Model<Element, SymbolType>
               keys: [SymbolType],
               aux: [SymbolType]) -> SymbolType?
     {
-        var symbol : SymbolType?
+        let symbol = context
+            .currentContext
+            .tree
+            .randomElement()?
+            .symbol
         
-        if context.currentContext.branch == 0 {
-            symbol = nil
-        }
-        else {
-            symbol = context.currentContext
-                .tree[ Int(rnd(Int32(context.currentContext.branch))) ]
-                .symbol
-        }
+        guard !keys.isEmpty else { return symbol }
         
-        if keys.count > 0 {
-            var i = Int(rnd(Int32(keys.count)))
-            let stop = i
-            
-            while true {
-                if (!aux.contains(keys[i]) || aux.first == keys[i])
-                {
-                    return keys[i]
-                }
-                
-                i += 1
-                
-                if i == keys.count {
-                    i = 0
-                }
-                
-                if i == stop {
-                    return symbol
-                }
-            }
-        }
-        
-        return symbol
+        return keys
+            .randomCircularSplit()
+            .filter { !aux.contains($0) || aux.first == $0 }
+            .first
+            ?? symbol
     }
     
     func initializeForward() -> Context {
@@ -672,7 +651,8 @@ class ModernHAL {
     }
 }
 
-extension Array where Element : Equatable
+extension Array
+    where Element : Equatable
 {
     func deduplicated() -> Array<Element> {
         return reduce(into: Array<Element>()) {
@@ -680,5 +660,20 @@ extension Array where Element : Equatable
                 $0.append($1)
             }
         }
+    }
+}
+
+extension Array {
+    func randomElement() -> Element? {
+        guard isEmpty == false else { return nil }
+        return self[Int(rnd(Int32(self.count)))]
+    }
+    
+    func circularSplitting(at position: Int) -> [Element] {
+        return Array(suffix(count - position) + prefix(position))
+    }
+    
+    func randomCircularSplit() -> [Element] {
+        return circularSplitting(at: Int(rnd(Int32(self.count))))
     }
 }
