@@ -217,10 +217,6 @@ class Model<Element, SymbolType>
             context[0] = initial
         }
         
-        func activeContexts() -> [Tree<SymbolType>] {
-            return context.dropLast(2).flatMap { $0 }
-        }
-        
         func updateContext(symbol: SymbolType) {
             context = [context.first!] + context.dropLast().map { $0?.find(symbol: symbol) }
         }
@@ -234,17 +230,13 @@ class Model<Element, SymbolType>
         }
         
         func entropy(of symbol: SymbolType) -> Float {
-            let probabilities = activeContexts().map { $0.probability(of: symbol) }
+            let activeContext = context.dropLast(2).flatMap { $0 }
+            let probabilities = activeContext.map { $0.probability(of: symbol) }
             let probability   = probabilities.reduce(0, +)
             
             return probabilities.count > 0
                 ? Float(log(Double(probability / Float(probabilities.count))))
                 : Float(0)
-        }
-
-        private func updateModel(symbol: SymbolType) {
-            context.dropLast().forEach { _ = $0?.add(symbol: symbol) }
-            context = [context.first!] + context.dropLast().map { $0?.find(symbol: symbol) }
         }
         
         func longestAvailableContext() -> Tree<SymbolType>? {
@@ -254,7 +246,9 @@ class Model<Element, SymbolType>
         var currentContext : Tree<SymbolType> { return context[0]! }
         
         func learn(symbols: [SymbolType]) {
-            symbols.forEach { self.updateModel(symbol: $0) }
+            _ = walk(symbols: symbols) { (symbol, context) in
+                context.context.dropLast().forEach { _ = $0?.add(symbol: symbol) }
+            }
         }
     }
 }
