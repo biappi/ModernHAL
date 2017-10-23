@@ -93,55 +93,17 @@ class Model<Element, SymbolType>
                        reply: [SymbolType])
         -> Float32
     {
-        var num = 0
-        var entropy : Float32 = 0
-        
-        let forwardContext = initializeForward()
-        
-        for word in reply {
-            if keys.contains(word) && (word != keys.first) {
-                var probability : Float32 = 0
-                var count       : Int = 0
-                
-                num += 1
-                
-                for context in forwardContext.activeContexts() {
-                    let node = context.find(symbol: word)!
-                    probability += Float32(node.count) / Float32(context.usage)
-                    count += 1
-                }
-                
-                if count > 0 {
-                    entropy -= Float32(log(Double(probability / Float32(count))))
-                }
-            }
-            
-            forwardContext.updateContext(symbol: word)
+        let entropyOfKeyword = { (word: SymbolType, context: Context) -> Float? in
+            let contains = keys.contains(word) && (word != keys.first)
+            return contains ? context.entropy(of: word) : nil
         }
         
+        let forwardEntropies  = initializeForward().walk(symbols: reply, entropyOfKeyword).flatMap { $0 }
+        let backwardEntropies = initializeBackward().walk(symbols: reply.reversed(), entropyOfKeyword).flatMap { $0 }
+        let entropies = forwardEntropies + backwardEntropies
         
-        let backwardContext = initializeBackward()
-        
-        for word in reply.lazy.reversed() {
-            if keys.contains(word) && (word != keys.first) {
-                var probability : Float = 0
-                var count       : Float = 0
-                
-                num += 1
-                
-                for context in backwardContext.activeContexts() {
-                    let node = context.find(symbol: word)!
-                    probability += Float32(node.count) / Float32(context.usage)
-                    count += 1
-                }
-                
-                if count > 0 {
-                    entropy -= Float32(log(Double(probability / Float32(count))))
-                }
-            }
-            
-            backwardContext.updateContext(symbol: word)
-        }
+        var entropy = entropies.reduce(0, -)
+        let num     = entropies.count
         
         if num >= 8 {
             entropy /= Float32(sqrt(Double(num - 1)))
@@ -263,6 +225,23 @@ class Model<Element, SymbolType>
             context = [context.first!] + context.dropLast().map { $0?.find(symbol: symbol) }
         }
         
+        func walk<T>(symbols: [SymbolType], _ f: (SymbolType, Model.Context) -> T) -> [T] {
+            return symbols.map { symbol in
+                let x = f(symbol, self)
+                updateContext(symbol: symbol)
+                return x
+            }
+        }
+        
+        func entropy(of symbol: SymbolType) -> Float {
+            let probabilities = activeContexts().map { $0.probability(of: symbol) }
+            let probability   = probabilities.reduce(0, +)
+            
+            return probabilities.count > 0
+                ? Float(log(Double(probability / Float(probabilities.count))))
+                : Float(0)
+        }
+
         private func updateModel(symbol: SymbolType) {
             context.dropLast().forEach { _ = $0?.add(symbol: symbol) }
             context = [context.first!] + context.dropLast().map { $0?.find(symbol: symbol) }
@@ -457,6 +436,12 @@ class Tree <Symbol>
                 max = middle - 1
             }
         }
+    }
+}
+
+extension Tree {
+    func probability(of symbol: Symbol) -> Float {
+        return Float(find(symbol: symbol)!.count) / Float(usage)
     }
 }
 
